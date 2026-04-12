@@ -1,0 +1,43 @@
+instruments:
+  mso5:
+    type: MSO5.MSO5
+    address: TCPIP0::10.196.52.96::inst0::INSTR
+    init:
+      channels_n: 4
+  dmm:
+    type: qcodes.instrument_drivers.Keysight.Keysight34410A
+    address: TCPIP0::10.196.52.73::inst0::INSTR
+  fridge:
+    type: fridge.FridgeTemps
+    init:
+      url: https://qsyd.sydney.edu.au/data/Friesland?current
+  yoko:
+    type: qcodes.instrument_drivers.yokogawa.GS200.GS200
+    address: TCPIP0::10.196.52.75::inst0::INSTR
+    # address: TCPIP::10.196.52.75::INSTR
+    # address: TCPIP0::127.0.0.1::7655::SOCKET # mirror
+    init:
+      # terminator: "\r\n"
+      terminator: "\n"
+  pm100usb:
+    type: Thorlabs_PM100.Thorlabs_PM100USB
+    address: USB0::0x1313::0x8072::1906768::0::INSTR
+    init:
+      terminator: "\r\n"
+  pms120:
+    type: Thorlabs_PM100.Thorlabs_S120
+    address: USB0::0x1313::0x8072::1913782::0::INSTR
+    init:
+      terminator: "\r\n"
+  laser:
+    type: PPCL550.PPCL550
+    address: ASRL13
+  dmm_keithley:
+    # type: qcodes.instrument_drivers.Keithley.Keithley_2000.Keithley2000
+    type: Keithley_2000_new.Keithley2000
+    address: USB0::0x05E6::0x2230::9010428::0::INSTR
+    init:
+      terminator: "\n"
+  
+
+  
