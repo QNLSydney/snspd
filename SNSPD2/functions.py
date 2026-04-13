@@ -220,7 +220,7 @@ def capture_trace_simple(MS, dmm, v_attenuator, station=None):
 #     if timestamp is not None: 
 #         title_string += 
 
-def photon_number(bs10, bs90, power90, total_attenuation, wavelength=1550e-9):
+def photon_number(bs10, bs90, power90, total_attenuation, wavelength):
 
     # if total_attenuation.any() < 0: 
     #     raise ValueError("total_attenuation should be greater than 0")

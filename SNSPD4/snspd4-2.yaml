@@ -31,7 +31,10 @@ parameters:
     att_blue_calibration_avg_id: 459
     self.att_info_id: 457 
     att_blue_id: None
-  threshold1: -300e-3
+  wavelength_min: 1528e-9 
+  wavelength_max: 1565e-9
+  wavelength_step: 1e-9
+
 
 
 
