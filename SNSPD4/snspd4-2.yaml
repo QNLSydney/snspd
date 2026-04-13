@@ -10,7 +10,6 @@
 # self.h_pos_counts = 0 
 # self.v_scale_counts = 150e-3 
 # self.att_screw_calibration_id = None
-# # self.att_blue_calibration_avg_id = 441 # from IDs 167-239 
 # self.att_blue_calibration_avg_id = 459 # updated to include calibration times
 # self.system_dark_counts_id = 455
 # self.att_info_id = None # add this 
@@ -22,12 +21,14 @@ parameters:
   bs90: 0.9118079062146573
   laser_wavelength: 1550e-9
   laser_power: 7
+  v_attenuator: 4.7 # chosen from ID 
   oscilloscope: 
     h_time_counts: 100e-3
     h_pos_counts: 0
     v_scale_counts: 150e-3
   ids: 
-    self.att_screw_calibration_id: 165 # Use screw attenuator calibration number from Measurement 4-1
+    att_screw_calibration_id: 165 # Use screw attenuator calibration number from Measurement 4-1
+    att_blue_calibration_avg_id: 459
     self.att_info_id: 457 
     att_blue_id: None
   threshold1: -300e-3

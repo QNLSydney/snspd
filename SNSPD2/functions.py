@@ -138,7 +138,7 @@ def laser_set_standard(laser, wavelength, power):
 
 def laser_get_standard(laser):
     print(f'Power: {laser.power()}')
-    print(f'Frequency coarse: {laser.frequency_coarse()}')
+    print(f'Frequency coarse: {laser.frequency_coarse()*1e-12}THz')
     print(f'Wavelength (calculated) is {(spc.c/laser.frequency_coarse())*1e9}nm')
 
 
@@ -587,4 +587,35 @@ def current_sweep(yoko, dmm, currents, station=None):
 #                             ("avg_power90", avg_power90),
 #                              ("calibration_time", calibration_time),
 #                             )
-                                 
+
+
+# meas = Measurement()
+# meas.register_custom_parameter("v_attenuator", label="V")
+# meas.register_custom_parameter("total_attenuation", label="dB")
+# meas.register_custom_parameter("Nphotons", label="")
+
+# with meas.run() as datasaver: 
+#     print(datasaver.run_id)
+
+#     ID =  params.att_screw_calibration_id
+#     datasaver.dataset.add_metadata("att_screw_calibration_id", ID)
+#     data = load_by_id(ID).get_parameter_data()
+#     avg_attenuation_screw = np.average(data['attenuation']['attenuation'])
+    
+#     ID = params.att_blue_calibration_avg_id
+#     datasaver.dataset.add_metadata("att_combined_id", ID)
+#     data = load_by_id(ID).get_parameter_data()
+#     # Extract attenuator voltages 
+#     v_attenuator = data['v_attenuator']['v_attenuator']
+#     avg_attenuation = data['avg_attenuation']['avg_attenuation']
+#     avg_power90 = data['avg_power90']['avg_power90']
+    
+#     total_attenuation=avg_attenuation + avg_attenuation_screw
+    
+#     Nphotons = photon_number(params.bs10, params.bs90, power90=avg_power90, total_attenuation=total_attenuation, wavelength=1550e-9)
+    
+
+#     for i in range(len(v_attenuator)): 
+#         datasaver.add_result(("v_attenuator", v_attenuator[i]),
+#                          ("total_attenuation", total_attenuation[i]),
+#                         ("Nphotons", Nphotons[i]))
