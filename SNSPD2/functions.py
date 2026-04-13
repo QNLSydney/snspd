@@ -15,15 +15,19 @@ from qcodes import initialise_or_create_database_at, new_data_set, new_experimen
 import scipy
 import scipy.constants as spc 
 
-
+def update_station(station=None):
+    if station is not None: 
+        # Update experiment snapshot
+        _ = station.snapshot(update=True) # <- updates parameters in station 
+        print('update station')
 
 def quick_check(bs10, bs90, pmeter10, pmeter90, attenuator_name, station=None):
     '''Input: measured transmission of beam splitter and power meter instruments
     '''
-    if station is not None: 
-        # Update experiment snapshot
-        _ = station.snapshot(update=True) # <- updates parameters in station 
-    
+   
+    # Update experiment snapshot 
+    update_station(station)
+
     meas = Measurement()
     meas.register_custom_parameter("times", label="Samples (approx. s)")
     meas.register_custom_parameter("power10", label="W")
@@ -50,11 +54,11 @@ def calibrate(bs10, bs90, pmeter10, pmeter90, t: int, attenuator_name, station=N
     '''Input: measured transmission of beam splitter arms, power meter instruments, 
     t: time for which to calibrate (s)
     '''
-    if station is not None: 
-        # Update experiment snapshot
-        _ = station.snapshot(update=True) # <- updates parameters in station 
 
-    
+    # Update experiment snapshot 
+    update_station(station)
+
+    # Initialize measurement 
     meas = Measurement()
     meas.register_custom_parameter("times", label="Samples (approx. s)")
     meas.register_custom_parameter("power10", label="W")
@@ -131,8 +135,8 @@ def osc_check_standard(MS):
 def capture_trace(MS, dmm, yoko, p_att, station=None):
     ''' Parameters 
     '''
-    if station is not None: 
-        _ = station.snapshot(update=True) # <- updates parameters in station 
+    # Update experiment snapshot 
+    update_station(station)
     
     meas = Measurement()
     meas.register_custom_parameter("trace", label="trace")
@@ -168,8 +172,8 @@ def capture_trace(MS, dmm, yoko, p_att, station=None):
 def capture_trace_simple(MS, dmm, v_attenuator, station=None):
     ''' Parameters 
     '''
-    if station is not None: 
-        _ = station.snapshot(update=True) # <- updates parameters in station 
+    # Update experiment snapshot 
+    update_station(station) 
     
     meas = Measurement()
     meas.register_custom_parameter("trace", label="trace")
@@ -256,9 +260,8 @@ def snspd_dark_counts(MS, dmm, yoko, device_name, n_captures, interval, currents
     interval is specified in seconds
     '''
 
-    if station is not None: 
-        # Update experiment snapshot
-        _ = station.snapshot(update=True) # <- updates parameters in station 
+    # Update experiment snapshot 
+    update_station(station)
 
     meas = Measurement()
     meas.register_parameter(dmm.volt)
@@ -362,11 +365,10 @@ def snspd_counts_vs_attenuation(MS, dmm, yoko, p_att, device_name, n_captures, i
     interval is specified in seconds
     '''
 
-    if station is not None: 
-        # Update experiment snapshot
-        _ = station.snapshot(update=True) # <- updates parameters in station 
-        print('update station')
+    # Update station
+    update_station(station)
 
+    # Establish measurement
     meas = Measurement()
     meas.register_parameter(dmm.volt)
     meas.register_parameter(yoko.current)
@@ -485,6 +487,9 @@ def make_title(title, ID, extra=None):
     return s
 
 def current_sweep(yoko, dmm, station=None):
+    
+    # Update experiment snapshot 
+    update_station(station)
     pass
 
 
