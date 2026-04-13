@@ -476,3 +476,48 @@ def snspd_counts_vs_attenuation(MS, dmm, yoko, p_att, device_name, n_captures, i
                                 ("CR2", CR2), 
                                 ("v_attenuator", v))
 
+
+def make_title(title, ID, extra=None):
+    timestamp = load_by_id(ID).run_timestamp()
+    s = f'{title}\nID {ID} {timestamp}'
+    if extra is not None:
+        s += f'\n{extra}'
+    return s
+
+def current_sweep(yoko, dmm, station=None):
+    pass
+
+
+'''To do: write a function for the averaging code 
+'''
+# meas = Measurement()
+# meas.register_custom_parameter("ID_range", label="")
+# meas.register_custom_parameter("v_attenuator", label="V")
+# meas.register_custom_parameter("avg_attenuation", label="W")
+# meas.register_custom_parameter("avg_power90", label="W")
+# meas.register_custom_parameter("avg_power10", label="W")
+# meas.register_custom_parameter("calibration_time", label="s")
+
+# ID_range = np.arange(167, 240)
+# v_range = np.arange(3.4, 7.05, 0.05)
+
+# with meas.run() as datasaver: 
+#     print(datasaver.run_id)
+    
+#     datasaver.dataset.add_metadata("attenuator_name", params.att_blue_name)
+#     for i, ID in enumerate(ID_range): 
+    
+#         data = load_by_id(ID).get_parameter_data()
+#         avg_attenuation = np.average(data['attenuation']['attenuation'])
+#         avg_power90 = np.average(data['power90']['power90'])
+#         avg_power10 = np.average(data['power10']['power10'])
+#         calibration_time = data['times']['times'][-1]
+        
+#         datasaver.add_result(("ID_range", ID), 
+#                              ("v_attenuator", v_range[i]),
+#                              ("avg_attenuation", avg_attenuation),
+#                             ("avg_power10", avg_power10),
+#                             ("avg_power90", avg_power90),
+#                              ("calibration_time", calibration_time),
+#                             )
+                                 

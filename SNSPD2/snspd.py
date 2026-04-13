@@ -1,5 +1,8 @@
+import yaml
+
+
 class snspd:
-    def __init__(self):
+    def __init__(self, config=None):
         self.device_1_name = 'Line 1 R7C6'
         self.device_2_name = 'Line 2 Old Device'
         self.att_screw_name = 'VOA50PM'
@@ -16,4 +19,10 @@ class snspd:
         self.system_dark_counts_id = 455
         self.att_info_id = 457 # data containing votlage an corresponding total attenuation, number of photons 
         # self.counts_vs_attenuation = 463
-        self.counts_vs_attenuation = 464
+        self.counts_vs_attenuation_id = 464
+
+        # # Open your yaml file
+        # with open('config.yaml', 'r') as file:
+        #     data = yaml.safe_load(file)
+
+        # print(data)
