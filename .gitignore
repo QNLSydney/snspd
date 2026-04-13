@@ -20,7 +20,6 @@
 
 # PDFs 
 *.pdf
-!Datasheets/*.pdf
 
 
 # Applications 
