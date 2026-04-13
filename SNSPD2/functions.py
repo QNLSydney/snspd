@@ -486,11 +486,63 @@ def make_title(title, ID, extra=None):
         s += f'\n{extra}'
     return s
 
-def current_sweep(yoko, dmm, station=None):
+def current_sweep(yoko, dmm, currents, station=None):
     
-    # Update experiment snapshot 
-    update_station(station)
-    pass
+    # # Update experiment snapshot 
+    # update_station(station)
+    
+    # Ramping to start current 
+    start = currents[0]
+    initial = yoko.current()
+    if initial >= start: 
+        ramp = np.arange(initial, start-0.1e-6, -0.1e-6) # ramp down 
+    elif initial < start: 
+        ramp = np.arange(initial, start+0.1e-6, 0.1e-6) # ramp up
+
+    print(f'Ramping current from {yoko.current()}A to {start}A')
+
+    for r in ramp: 
+        yoko.current(round(r, 9)) # Set the current 
+        time.sleep(0.5)
+    
+    # Initialize measurement 
+    meas = Measurement()
+    meas.register_custom_parameter("ratio")
+    meas.register_parameter(yoko.current)
+    meas.register_parameter(dmm.volt)
+    # meas.register_custom_parameter("T_MXC", label="mK")
+
+
+    with meas.run() as datasaver:
+        print(datasaver.run_id)
+        for i in currents:
+            yoko.current(i)
+            time.sleep(2)
+            if i == 0: 
+                ratio = 0
+            else: 
+                ratio = dmm.volt()/yoko.current()
+            
+            # if tc.channels['MXC-flange'].measure()['temperature'][-1] == None:
+            #     temp = -1
+            # else: 
+            #     temp = tc.channels['MXC-flange'].measure()['temperature'][-1]*1e3
+            
+            datasaver.add_result(('ratio',ratio),
+                                (dmm.volt, dmm.volt()),
+                                (yoko.current, yoko.current()))
+                                # ("T_MXC", temp))
+            time.sleep(0.1)
+
+    # Ramping down
+    print('Ramping down')
+    for i in currents[::-1]: 
+        yoko.current(i)
+        time.sleep(0.1)
+
+    print(f'Current is {yoko.current()}')
+    print('Finished!')
+
 
 
 '''To do: write a function for the averaging code 
