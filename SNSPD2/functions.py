@@ -132,6 +132,16 @@ def osc_check_standard(MS):
     print(MS.channels[0].invert())
     print(MS.trigger_channels[0].ch1_trigger_level())
 
+def laser_set_standard(laser, wavelength, power):
+    laser.power(power)
+    laser.frequency_coarse(spc.c/wavelength)
+
+def laser_get_standard(laser):
+    print(f'Power: {laser.power()}')
+    print(f'Frequency coarse: {laser.frequency_coarse()}')
+    print(f'Wavelength (calculated) is {(spc.c/laser.frequency_coarse())*1e9}nm')
+
+
 def capture_trace(MS, dmm, yoko, p_att, station=None):
     ''' Parameters 
     '''
