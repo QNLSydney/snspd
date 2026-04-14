@@ -9,3 +9,4 @@ To do
 * adjust counts function and plotting routine to not get the voltage applied to attenuator value from passing in the instrument, but from the station
 * reconcile counting functons and which parameters should be set externally and which internally 
 * retrieve deleted Counts vs attenuation measurement run file from GIthub
+* for meas. 4-3 draw on diagram the applied attenuator voltage and laser settings, put all things being controlled on the diagram 
