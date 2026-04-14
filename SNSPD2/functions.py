@@ -571,14 +571,13 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
     meas.register_custom_parameter("total_counts2", label="counts")
     meas.register_custom_parameter("counts1")
     meas.register_custom_parameter("counts2")
-    meas.register_custom_parameter("trace_time", label="s")
     meas.register_custom_parameter("meas_time", label="s")
     meas.register_custom_parameter("interval", label="s")
+    meas.register_custom_parameter("n_captures", label="s")
     meas.register_custom_parameter("CR1", label="cps")
     meas.register_custom_parameter("CR2", label="cps")
-    meas.register_custom_parameter("n_captures")
     meas.register_custom_parameter("v_attenuator", label="V")
-    meas.register_custom_parameter("wavelength", label="nm")
+    meas.register_custom_parameter("wavelength_range", label="nm")
 
 
 
@@ -591,12 +590,13 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
         if MS.channels[0].clipping(): 
             print('Error: Clipping')
 
-        # Start with laser off 
-        ############################ TURN LASER OFF ############################ 
-        laser.enable(False)
-        print(f'Laser enable status: {laser.enable()}')
 
         for wav in wavelength_range: # <- sweep wavelength of laser 
+
+            # Start with laser off 
+            ############################ TURN LASER OFF ############################ 
+            laser.enable(False)
+            print(f'Laser enable status: {laser.enable()}')
 
             # Set laser wavelength
             laser.frequency_coarse(spc.c/wav)
@@ -658,8 +658,9 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
             # dark count rate calculation
             CR1 = total_counts1/meas_time
             CR2 = total_counts2/meas_time
+        
             
-            # Save data 
+                # Save data 
             datasaver.add_result((yoko.current, yoko.current()),
                                 (dmm.volt, dmm.volt()),
                                 ("threshold1", threshold1), 
@@ -673,7 +674,7 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
                                 ("n_captures", n_captures),
                                 ("CR1", CR1), 
                                 ("CR2", CR2), 
-                                ("v_attenuator", p_att.ask('VOLT?')), 
+                                ("v_attenuator", float(p_att.ask('VOLT?'))), 
                                 ('wavelength_range', wav))
 
 '''To do: write a function for the averaging code 
