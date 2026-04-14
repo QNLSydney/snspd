@@ -1,4 +1,5 @@
 parameters: 
+  database: "D:\SNSPD\SNSPD2\2026-03-10_SNSPD4.db"
   bs10: 0.08819209378534265
   bs90: 0.9118079062146573
   laser_wavelength: 1550e-9
