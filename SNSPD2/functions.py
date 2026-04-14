@@ -677,6 +677,119 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
                                 ("v_attenuator", float(p_att.ask('VOLT?'))), 
                                 ('wavelength_range', wav))
 
+
+def snspd_counts_vs_current(MS, dmm, yoko, p_att, device_name, n_captures, interval, currents, station=None):
+    '''
+    interval is specified in seconds
+    '''
+
+    # Update station
+    update_station(station)
+
+    # Establish measurement
+    meas = Measurement()
+    meas.register_parameter(dmm.volt)
+    meas.register_parameter(yoko.current)
+    meas.register_custom_parameter("threshold1", label="V")
+    meas.register_custom_parameter("threshold2", label="V")
+    meas.register_custom_parameter("total_counts1", label="counts")
+    meas.register_custom_parameter("total_counts2", label="counts")
+    meas.register_custom_parameter("counts1")
+    meas.register_custom_parameter("counts2")
+    meas.register_custom_parameter("meas_time", label="s")
+    meas.register_custom_parameter("interval", label="s")
+    meas.register_custom_parameter("n_captures", label="s")
+    meas.register_custom_parameter("CR1", label="cps")
+    meas.register_custom_parameter("CR2", label="cps")
+    meas.register_custom_parameter("v_attenuator", label="V")
+
+
+
+    with meas.run() as datasaver:
+        print(datasaver.run_id)
+        
+        # save device name 
+        datasaver.dataset.add_metadata("device", device_name)
+
+        if MS.channels[0].clipping(): 
+            print('Error: Clipping')
+
+
+        for cur in currents: # <- sweep wavelength of laser 
+
+            # set current 
+            yoko.current(cur)
+            time.sleep(1)
+            print(f'Starting current {yoko.current()}')
+
+
+            # Extract the amount of time in one trace 
+            h_time = MS.horizontal_scale()*MS.horizontal_divisions()
+    
+            
+            # Set thresholds based on current 
+            threshold1, threshold2 = set_thresholds(yoko.current())
+
+            # Set thresholds  
+            MS.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
+            MS.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+
+            time.sleep(5)
+
+            # Run count 
+            MS.write("SEARCH:SEARCH1:STATE 0")
+            MS.write("SEARCH:SEARCH1:STATE 1")
+            MS.write("SEARCH:SEARCH2:STATE 0")
+            MS.write("SEARCH:SEARCH2:STATE 1")
+
+            start = time.perf_counter()
+            print(f'This acquisition will take {n_captures*interval}s')
+            print(datetime.datetime.now().hour,  datetime.datetime.now().minute)
+
+            counts1= []
+            counts2= []
+
+            
+            for i in range(n_captures):
+                time.sleep(interval)
+
+                # Extract counts 
+                count1 = int(MS.ask("SEARCH:SEARCH1:TOTal?"))
+                count2 = int(MS.ask("SEARCH:SEARCH2:TOTal?"))
+
+                counts1.append(count1)
+                counts2.append(count2)
+
+                
+            # calculate total counts 
+            total_counts1 = sum(counts1)
+            total_counts2 = sum(counts2)
+            
+            # total time in measurement 
+            meas_time = n_captures*h_time
+            
+            # dark count rate calculation
+            CR1 = total_counts1/meas_time
+            CR2 = total_counts2/meas_time
+        
+            
+                # Save data 
+            datasaver.add_result((yoko.current, yoko.current()),
+                                (dmm.volt, dmm.volt()),
+                                ("threshold1", threshold1), 
+                                ("threshold2", threshold2), 
+                                ("total_counts1", total_counts1), 
+                                ("total_counts2", total_counts2), 
+                                ("counts1", counts1), 
+                                ("counts2", counts2), 
+                                ("meas_time", meas_time), 
+                                ("interval", interval), 
+                                ("n_captures", n_captures),
+                                ("CR1", CR1), 
+                                ("CR2", CR2), 
+                                ("v_attenuator", float(p_att.ask('VOLT?'))))
+
+
 '''To do: write a function for the averaging code 
 '''
 # meas = Measurement()
