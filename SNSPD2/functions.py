@@ -591,6 +591,11 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
         if MS.channels[0].clipping(): 
             print('Error: Clipping')
 
+        # Start with laser off 
+        ############################ TURN LASER OFF ############################ 
+        laser.enable(False)
+        print(f'Laser enable status: {laser.enable()}')
+
         for wav in wavelength_range: # <- sweep wavelength of laser 
 
             # Set laser wavelength
@@ -598,6 +603,11 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
             time.sleep(10)
             laser_get_standard(laser)
             print('\n')
+
+            # ############################ TURN LASER ON ############################ 
+            laser.enable(True)
+            print(f'Laser enable status: {laser.enable()}')
+            time.sleep(2)
 
 
             # Extract the amount of time in one trace 

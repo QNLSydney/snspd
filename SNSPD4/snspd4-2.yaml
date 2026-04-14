@@ -34,6 +34,7 @@ parameters:
   wavelength_min: 1528e-9 
   wavelength_max: 1565e-9
   wavelength_step: 1e-9
+  current: 12e-6 
 
 
 
