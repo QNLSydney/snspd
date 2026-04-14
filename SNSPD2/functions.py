@@ -607,7 +607,7 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
             # ############################ TURN LASER ON ############################ 
             laser.enable(True)
             print(f'Laser enable status: {laser.enable()}')
-            time.sleep(2)
+            time.sleep(10)
 
 
             # Extract the amount of time in one trace 

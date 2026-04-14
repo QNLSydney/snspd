@@ -13,9 +13,9 @@ instruments:
       url: https://qsyd.sydney.edu.au/data/Friesland?current
   yoko:
     type: qcodes.instrument_drivers.yokogawa.GS200.GS200
-    address: TCPIP0::10.196.52.75::inst0::INSTR
+    # address: TCPIP0::10.196.52.75::inst0::INSTR
     # address: TCPIP::10.196.52.75::INSTR
-    # address: TCPIP0::127.0.0.1::7655::SOCKET # mirror
+    address: TCPIP0::127.0.0.1::7655::SOCKET # mirror
     init:
       # terminator: "\r\n"
       terminator: "\n"
