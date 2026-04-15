@@ -237,32 +237,54 @@ def photon_number(bs10, bs90, power90, total_attenuation, wavelength):
 
 def set_thresholds(current):
 
-    # Thresholds from ID 12 
-    if current > 13e-6:
-        threshold1 = -330e-3 # in volts
-        threshold2 = -50e-3 # in volt
+    # # Thresholds from ID 12 
+    # if current > 13e-6:
+    #     threshold1 = -330e-3 # in volts
+    #     threshold2 = -50e-3 # in volt
 
 
-    elif current > 11e-6:
-        threshold1 = -276e-3 # in volts
-        threshold2 = -50e-3 # in volt
+    # elif current > 11e-6:
+    #     threshold1 = -276e-3 # in volts
+    #     threshold2 = -50e-3 # in volt
 
 
-    elif current > 9e-6:
-        threshold1 = -237e-3 # in volts
-        threshold2 = -50e-3 # in volt
+    # elif current > 9e-6:
+    #     threshold1 = -237e-3 # in volts
+    #     threshold2 = -50e-3 # in volt
 
 
-    elif current > 7e-6:
-        threshold1 = -177e-3 # in volts
-        threshold2 = -50e-3 # in volt
+    # elif current > 7e-6:
+    #     threshold1 = -177e-3 # in volts
+    #     threshold2 = -50e-3 # in volt
 
 
+    # else:
+    #     threshold1 = -126e-3 # in volts
+    #     threshold2 = -50e-3 # in volt
+
+    # Thresholds from ID 20
+    if current >= 2e-6:
+        threshold1 = -24e-3 # in volts
+        threshold2 = -10e-3 # in volt
+
+
+    elif current >= 1.5e-6:
+        threshold1 = -11.2e-3 # in volts
+        threshold2 = -8.5e-3 # in volt
+
+
+    elif current >= 1e-6: 
+        threshold1 = -9e-3 
+        threshold2 = -8e-3
+        
     else:
-        threshold1 = -126e-3 # in volts
-        threshold2 = -50e-3 # in volt
+        threshold1 = -6.5e-3 # in volts
+        threshold2 = -4.5e-3 # in volt
     
     return threshold1, threshold2
+
+    
+
 
 
 def snspd_dark_counts(MS, dmm, yoko, device_name, n_captures, interval, currents, station=None):
