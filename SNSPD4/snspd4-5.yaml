@@ -23,6 +23,13 @@ parameters:
     #     threshold2 = -4.5e-3 # in volt
 
   # 
+  # Parameters from SNSPD4_5_Counts_vs_Current.ipynb
+  v_attenuator = 4.7
+  v_scale_old_device = 50e-3
+  current_range = np.arange(1e-7, 4.1e-6, 1e-7)
+  device_name = 'Line 2 Old Device'
+
+# Thresholds in snspd.py for Measurement 4-5
   thresholds: 
     case1: 
       current: 2e-6
