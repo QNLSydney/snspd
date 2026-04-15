@@ -1,0 +1,3 @@
+parameters:
+  wavelengths: [1530e-9, 1540e-9, 1550e-9, 1560e-9, 1565e-9]
+  wavelength_id_range: [478, 479, 480, 481, 482]
