@@ -13,3 +13,4 @@ To do
 * from Measurement 4-5: create a better way to import new thresholds rather than commenting out the function: maybe read from a config file. This would work well if the functions were incorporated into the main class. 
 * Oscillosocpe counting parameters (thresholds, vertical scale) need to be able to be re-set for different devices
 * dark counts current is unnecessary becasue counts vs current doesn't set the laser
+* eg in dark counts notebook make it clear which parameters are being set in the cell - config files will help here
