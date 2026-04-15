@@ -1,0 +1,40 @@
+parameters: 
+  # device_name should be old device name 
+  # v_attenuator should be 4.7 for ~100dB inline
+
+
+    # Thresholds from ID 20
+    # if current >= 2e-6:
+    #     threshold1 = -24e-3 # in volts
+    #     threshold2 = -10e-3 # in volt
+
+
+    # elif current >= 1.5e-6:
+    #     threshold1 = -11.2e-3 # in volts
+    #     threshold2 = -8.5e-3 # in volt
+
+
+    # elif current >= 1e-6: 
+    #     threshold1 = -9e-3 
+    #     threshold2 = -8e-3
+        
+    # else:
+    #     threshold1 = -6.5e-3 # in volts
+    #     threshold2 = -4.5e-3 # in volt
+
+  # 
+  thresholds: 
+    case1: 
+      current: 2e-6
+      threshold1: -24e-3
+      threshold2: -10e-3
+    case2: 
+      current: 2e-6
+      threshold1: -24e-3
+      threshold2: -10e-3  
+    case3: 
+      current: 
+    case4:
+      threshold1: 
+      threshold2:    
+    
