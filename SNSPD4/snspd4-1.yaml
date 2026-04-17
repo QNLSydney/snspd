@@ -15,4 +15,8 @@ self.system_dark_counts_id = 455
 self.att_info_id = 457 # data containing votlage an corresponding total attenuation, number of photons 
 # self.counts_vs_attenuation = 463
 self.counts_vs_attenuation = 464
+self.4K_amp_gain_centre = 45
+self.4K_amp_gain_error = 5
+self.RT_amp_gain_centre = 21.74 # dB 
+self.RT_amp_gain_error = 3.02 # dB 
 
