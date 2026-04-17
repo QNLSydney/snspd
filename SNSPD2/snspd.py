@@ -8,6 +8,12 @@ class snspd:
         self.att_blue_name = 'V1550PA'
         self.bs10 = 0.08819209378534265
         self.bs90 = 0.9118079062146573
+        self.fourK_amp_gain_centre = 45
+        self.fourK_amp_gain_error = 5
+        self.RT_amp_gain_centre = 21.74 # dB 
+        self.RT_amp_gain_error = 3.02 # dB 
+        self.connection1 = 'single fibre'
+        self.connection2 = 'ferrule to ferrule'
 
 
         # Create config for parameters that pertain to devices 
