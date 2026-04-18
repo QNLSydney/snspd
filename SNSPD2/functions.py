@@ -44,6 +44,12 @@ def quick_check(bs10, bs90, pmeter10, pmeter90, attenuator_name, station=None):
         attenuation = 10*np.log10((bs10/bs90*power90)/power10)
         time.sleep(2)
 
+        # power90 = 0.9*plaser
+        # plaser = power90/0.9 
+        # pin = 0.1*plaser = 0.1*( power90/0.9 ) = (0.1/0.9)*power90
+        # pout = power10 
+        # dB = 10log10(pout/pin) = 10log10(power10/[(0.1/0.9)*power90]) = 10log10((0.9/0.1)*power10/power90])
+
         datasaver.add_result(("power10", power10),
                 ("power90", power90),
                 ("attenuation", attenuation))
