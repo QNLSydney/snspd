@@ -1,4 +1,5 @@
-parameters: 
+
+
   # device_name should be old device name 
   # v_attenuator should be 4.7 for ~100dB inline
 
