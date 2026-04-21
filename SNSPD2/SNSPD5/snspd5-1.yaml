@@ -8,4 +8,4 @@ att_screw_name: 'VOA50PM'
 att_blue_name: 'V1550PA'
 position1: 'PM120_bs90'
 position2: 'PM120_bs10'
-
+att_blue_calibration_avg_id: 159 # add

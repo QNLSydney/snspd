@@ -80,9 +80,9 @@ def calibrate(bs10, bs90, pmeter10, pmeter90, t: int, attenuator_name, station=N
         
         for i in range(t*2 + 1):
             
-            power10 = pmeter10.power()
-            power90 = pmeter90.power()
-            attenuation = 10*np.log10((bs10/bs90*power90)/power10) 
+            power10 = pmeter10.power() if pmeter10 is not None else None
+            power90 = pmeter90.power()  if pmeter90 is not None else None
+            attenuation = 10*np.log10((bs10/bs90*power90)/power10) if (power10 is not None) and (power90 is not None) else None
 
             time.sleep(0.5)
     
@@ -93,6 +93,39 @@ def calibrate(bs10, bs90, pmeter10, pmeter90, t: int, attenuator_name, station=N
 
         end = time.perf_counter()
         print(f'Finished in {end-start}s')
+
+def calibrate_single(pmeter, t: int, device_name, station=None):
+    '''Input: measured transmission of beam splitter arms, power meter instruments, 
+    t: time for which to calibrate (s)
+    '''
+
+    # Update experiment snapshot 
+    update_station(station)
+
+    # Initialize measurement 
+    meas = Measurement()
+    meas.register_custom_parameter("times", label="Samples (approx. s)")
+    meas.register_custom_parameter("power", label="W")
+
+    with meas.run() as datasaver:
+        print(datasaver.run_id)
+
+        datasaver.dataset.add_metadata("device_name", device_name)
+
+        start = time.perf_counter()
+        
+        for i in range(t*2 + 1):
+            
+            power_meas = pmeter.power()
+
+            time.sleep(0.5)
+    
+            datasaver.add_result(("times",i/2),
+                             ("power", power_meas))
+
+        end = time.perf_counter()
+        print(f'Finished in {end-start}s')
+
 
 def osc_set_standard(MS, v_trigger=0, v_scale=50e-3, h_time=100e-3, h_pos=0):
     '''Input: optional argument for time on horizontal axis of oscilloscope
