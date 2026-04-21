@@ -1,0 +1,11 @@
+
+# Cooldown 6: new fibre
+connection1: 'single fibre'
+connection2: 'ferrule to ferrule'
+bs10: 0.08819209378534265
+bs90: 0.9118079062146573
+power90_base: 0.0048188305224999995 # average of power90 from ID 1-4 SNSPD5 database
+att_screw_name: 'VOA50PM'
+att_blue_name: 'V1550PA'
+pmeter_king_name: 'KING-60S'
+pmeter_thorlabs_name: 'PM100D-S154C'

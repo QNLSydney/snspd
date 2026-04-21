@@ -99,3 +99,4 @@ class Thorlabs_S120(Thorlabs_PM100):
         super().__init__(name, address, **kwargs)
 
         idn = self.get_idn()
+

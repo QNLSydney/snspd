@@ -38,6 +38,9 @@ instruments:
     address: USB0::0x05E6::0x2230::9010428::0::INSTR
     init:
       terminator: "\n"
-  
+  pm100d:
+    # type: Thorlabs_PM100.Thorlabs_PM100D
+    type: Thorlabs_PM100D.Thorlabs_PM100D
+    address: 'USB0::0x1313::0x8078::P0033329::0::INSTR'
 
   

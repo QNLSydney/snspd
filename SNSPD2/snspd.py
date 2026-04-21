@@ -1,4 +1,20 @@
 import yaml
+import time
+from time import sleep, monotonic
+import datetime
+import numpy as np
+import matplotlib.pyplot as plt
+import sys
+import pyvisa
+import qcodes as qc
+from qcodes.dataset import Measurement
+from qcodes.dataset import do0d
+from qcodes.dataset.experiment_container import new_experiment, load_experiment_by_name
+from qcodes.dataset.plotting import plot_by_id
+from qcodes.dataset.data_set import load_by_id, load_by_counter
+from qcodes import initialise_or_create_database_at, new_data_set, new_experiment
+import scipy
+import scipy.constants as spc 
 
 
 class snspd:
@@ -45,4 +61,7 @@ class snspd:
         # goal: get this to read in from yaml file
         pass
     
-   
+    def laser_get_standard(self, laser):
+        print(f'Power: {laser.power()}')
+        print(f'Frequency coarse: {laser.frequency_coarse()*1e-12}THz')
+        print(f'Wavelength (calculated) is {(spc.c/laser.frequency_coarse())*1e9}nm')
