@@ -29,7 +29,6 @@ def quick_check(bs10, bs90, pmeter10, pmeter90, attenuator_name, station=None):
     update_station(station)
 
     meas = Measurement()
-    meas.register_custom_parameter("times", label="Samples (approx. s)")
     meas.register_custom_parameter("power10", label="W")
     meas.register_custom_parameter("power90", label="W")
     meas.register_custom_parameter("attenuation", label="dB")
