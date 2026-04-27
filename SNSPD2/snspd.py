@@ -20,11 +20,12 @@ import scipy.constants as spc
 class snspd:
     def __init__(self, config=None):
 
-        with open(config, 'r') as f: # open in read mode 
-            attrs = yaml.safe_load(f)
+        if config is not None: 
+            with open(config, 'r') as f: # open in read mode 
+                attrs = yaml.safe_load(f)
 
-            for key, value in attrs.items(): # items method extracts key value pairs in a dictionary 
-                setattr(self, key, value) # set attribute in class, with name key and with value
+                for key, value in attrs.items(): # items method extracts key value pairs in a dictionary 
+                    setattr(self, key, value) # set attribute in class, with name key and with value
 
 
 
@@ -65,3 +66,10 @@ class snspd:
         print(f'Power: {laser.power()}')
         print(f'Frequency coarse: {laser.frequency_coarse()*1e-12}THz')
         print(f'Wavelength (calculated) is {(spc.c/laser.frequency_coarse())*1e9}nm')
+    
+    def make_title(self, title, ID, extra=None):
+        timestamp = load_by_id(ID).run_timestamp()
+        s = f'{title}\nID {ID} {timestamp}'
+        if extra is not None:
+            s += f'\n{extra}'
+        return s
