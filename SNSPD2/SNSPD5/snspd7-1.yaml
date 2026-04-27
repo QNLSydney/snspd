@@ -8,5 +8,6 @@ att_screw_name: 'VOA50PM'
 att_blue_name: 'V1550PA'
 pmeter_king_name: 'KING-60S'
 pmeter_thorlabs_name: 'PM100D-S154C'
+pmeter_black_name: 'PM120'
 pm100d_calibration_minid: 2
 pm100d_calibration_maxid: 20
