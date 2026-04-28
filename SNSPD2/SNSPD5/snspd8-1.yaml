@@ -1,0 +1,9 @@
+
+connection: feedthrough
+bs10: 0.08819209378534265
+bs90: 0.9118079062146573
+
+# from Cooldown 7: Bluefors fibre through feedthrough
+connection: feedthrough
+bs10: 0.08819209378534265
+bs90: 0.9118079062146573
