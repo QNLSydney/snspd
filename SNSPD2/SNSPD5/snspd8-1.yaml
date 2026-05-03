@@ -7,3 +7,7 @@ bs90: 0.9118079062146573
 connection: feedthrough
 bs10: 0.08819209378534265
 bs90: 0.9118079062146573
+
+
+white_fibre_name: 'white fibre'
+beige_fibre_name: 'beige fibre'
