@@ -73,3 +73,13 @@ class snspd:
         if extra is not None:
             s += f'\n{extra}'
         return s
+    
+    def load_id_from_database(self, database, exp_name, sample_name, ID):
+        initialise_or_create_database_at(database)
+
+        try:
+            exp = qc.load_experiment_by_name(exp_name, sample=sample_name)
+        except ValueError:
+            print('No such experiment')
+        
+        return load_by_id(ID)
