@@ -54,6 +54,7 @@ class Thorlabs_PM100D(VisaInstrument):
             unit='m',
             get_cmd='SENS:CORR:WAV?',
             set_cmd='SENS:CORR:WAV {}',
+            get_parser=float, # <- added because parameter class is throwing Type Error 
             scale=1e9,
             vals=vals.Numbers(185e-9, 25e-6),
             instrument=self

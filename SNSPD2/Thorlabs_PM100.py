@@ -18,8 +18,10 @@ class Thorlabs_PM100(VisaInstrument):
         self.add_parameter('wavelength',
                             get_cmd='CORR:WAV?',
                             set_cmd='CORR:WAV {0:.3f}',
-                            unit='nm',
+                            unit='m', # <- changed this from nm to m to match the other powermeter
+                            scale=1e9, # <- changed this to match the other powermeter, specify in m (1550e-9)
                             get_parser=float
+                            # TODO: should this have a wavelength range? 
                             )
         self.add_parameter('power',
                             get_cmd='MEAS:POW?',
