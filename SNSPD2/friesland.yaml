@@ -1,5 +1,5 @@
 instruments:
-  mso5:
+  osc:
     type: MSO5.MSO5
     address: TCPIP0::10.196.52.96::inst0::INSTR
     init:

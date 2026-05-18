@@ -319,10 +319,14 @@ def set_thresholds(current):
 
 
 
-def snspd_dark_counts(MS, dmm, yoko, device_name, n_captures, interval, currents, station=None):
+def MSO5_counts_vs_current(osc, dmm, yoko, device_name, n_captures, interval, currents, station=None):
     '''
     interval is specified in seconds
     '''
+
+    idn = osc.get_idn()
+    if idn['model'] != 'MSO5':
+            raise Exception('Connected oscilloscope is not a Tektronix MSO5.')
 
     # Update experiment snapshot 
     update_station(station)
@@ -351,7 +355,7 @@ def snspd_dark_counts(MS, dmm, yoko, device_name, n_captures, interval, currents
         datasaver.dataset.add_metadata("device", device_name)
         
         # Extract the amount of time in one trace 
-        h_time = MS.horizontal_scale()*MS.horizontal_divisions()
+        h_time = osc.horizontal_scale()*osc.horizontal_divisions()
         
         time.sleep(2)
 
@@ -361,22 +365,22 @@ def snspd_dark_counts(MS, dmm, yoko, device_name, n_captures, interval, currents
             # Set current 
             yoko.current(current)
 
-            if MS.channels[0].clipping(): 
+            if osc.channels[0].clipping(): 
                 print('Error: Clipping')
 
             threshold1, threshold2 = set_thresholds(current)
 
             # Set thresholds  
-            MS.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
-            MS.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+            osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
+            osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
 
             time.sleep(5)
 
             # Run count 
-            MS.write("SEARCH:SEARCH1:STATE 0")
-            MS.write("SEARCH:SEARCH1:STATE 1")
-            MS.write("SEARCH:SEARCH2:STATE 0")
-            MS.write("SEARCH:SEARCH2:STATE 1")
+            osc.write("SEARCH:SEARCH1:STATE 0")
+            osc.write("SEARCH:SEARCH1:STATE 1")
+            osc.write("SEARCH:SEARCH2:STATE 0")
+            osc.write("SEARCH:SEARCH2:STATE 1")
 
             start = time.perf_counter()
             print(f'This acquisition will take {n_captures*interval}s')
@@ -646,6 +650,12 @@ def snspd_counts_vs_wavelength(MS, dmm, yoko, p_att, laser, device_name, n_captu
 
 
         for wav in wavelength_range: # <- sweep wavelength of laser 
+
+            # # Set wavelength sensitivity of all 
+            # self.laser_set_standard(laser, wavelength=1550e-9, power=7)
+            # self.laser_get_standard(laser)
+            # self.pmeter_set_standard(pmeter=pm100d, wavelength=1550e-9)
+            # self.pmeter_set_standard(pmeter=pms120, wavelength=1550e-9)
 
             # Start with laser off 
             ############################ TURN LASER OFF ############################ 
