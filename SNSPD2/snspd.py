@@ -315,13 +315,13 @@ class snspd:
             Plaser =  power90/self.bs90
             Pin = Plaser*self.bs10
             Pdevice = Pin*(10**(-total_attenuation/10))
-            f = spc.c/wav 
+            f = spc.c/wavelength 
             Ephoton = spc.h*f
             Nphotons = Pdevice/Ephoton
 
             datasaver.add_result(("total_attenuation", total_attenuation),
                                 ("Nphotons", Nphotons),
-                                ("wavelength", wav), 
+                                ("wavelength", wavelength), 
                                 ("power90", power90), 
                                 ("v_attenuator", v_attenuator))
 
