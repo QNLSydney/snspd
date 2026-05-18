@@ -35,9 +35,13 @@ power_90_average_id:
 
 total_att_ID: 133
 
-Nphotons_ID: 83
-Nphotons_ID_6V: 
-Nphotons_wavID: 
+# Nphotons_ID: 83
+# Nphotons_ID_6V: 
+# Nphotons_wavID_5_5v: 137
+NphotonsID: 
+  vs_dB: 83 # 1550nm, vs attenuation 
+  vs_wav_5_5: 137 # 5.5V, vs wavelength
+  vs_wav_5: 142 # 5V, vs wavelength 
 
 
 # Critical current sweep - bias current dictates threshold voltage 
@@ -79,10 +83,10 @@ device_line_1:
        -1.250e-05, -1.275e-05, -1.300e-05, -1.325e-05, -1.350e-05,
        -1.375e-05, -1.400e-05, -1.425e-05, -1.450e-05, -1.475e-05,
        -1.500e-05] # from ID 41
-  v_attenuator_vals:
-    att_blue_v_1: 5
-    att_blue_v_2: 5.5
-  bias_current: -14e-6 # max SDE current 
+  # v_attenuator_vals:
+  #   att_blue_v_1: 5
+  #   att_blue_v_2: 5.5
+  # bias_current: -14e-6 # max SDE current 
   thresholds:
     # ranges must go from high to low current, assumes the loop goes high to low
     # thresholds are in volts 
@@ -108,7 +112,12 @@ device_line_1:
       run1: 87 # Bias current -14uA
       run2: [100, 101, 102, 103, 104, 105, 106, 107] # Range of bias currents 
       run3: [110, 111, 112, 113]
-    wavelength: 124 
+      run4: [143]
+    wavelength: 
+      run5_5v: 124 # 5.5V 
+      run5v: 141 # 5V applied
+    Nphotons: 
+      
       
 
     # lower threshold well above the noise floor at all points, set thresholds by sweeping current and observing 

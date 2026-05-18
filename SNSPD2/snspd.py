@@ -295,7 +295,7 @@ class snspd:
                 
                 time.sleep(10)
 
-    def photon_number(self, power90, total_attenuation, wavelength):
+    def photon_number(self, power90, total_attenuation, v_attenuator, wavelength):
 
         # if total_attenuation.any() < 0: 
         #     raise ValueError("total_attenuation should be greater than 0")
@@ -303,24 +303,27 @@ class snspd:
 
         # Establish measurement
         meas = Measurement()
-        meas.register_custom_parameter("attenuation", label="dB")
+        meas.register_custom_parameter("total_attenuation", label="dB")
         meas.register_custom_parameter("wavelength", label="m")
-        meas.register_custom_parameter("Nphotons", setpoints=("attenuation",))
+        meas.register_custom_parameter("Nphotons")
+        meas.register_custom_parameter("v_attenuator", label="V")
+        meas.register_custom_parameter("power90", label="W")
         
         with meas.run() as datasaver:
             print(datasaver.run_id)
 
-            for wav in wavelength: 
-                Plaser =  power90/self.bs90
-                Pin = Plaser*self.bs10
-                Pdevice = Pin*(10**(-total_attenuation/10))
-                f = spc.c/wav 
-                Ephoton = spc.h*f
-                Nphotons = Pdevice/Ephoton
+            Plaser =  power90/self.bs90
+            Pin = Plaser*self.bs10
+            Pdevice = Pin*(10**(-total_attenuation/10))
+            f = spc.c/wav 
+            Ephoton = spc.h*f
+            Nphotons = Pdevice/Ephoton
 
-                datasaver.add_result(("attenuation", total_attenuation),
-                                    ("Nphotons", Nphotons),
-                                    ("wavelength", wav))
+            datasaver.add_result(("total_attenuation", total_attenuation),
+                                ("Nphotons", Nphotons),
+                                ("wavelength", wav), 
+                                ("power90", power90), 
+                                ("v_attenuator", v_attenuator))
 
         return Nphotons
     
@@ -378,6 +381,8 @@ class snspd:
         meas.register_custom_parameter("CR1", label="cps", setpoints=(yoko.current,))
         meas.register_custom_parameter("CR2", label="cps", setpoints=(yoko.current,))
         meas.register_custom_parameter("n_captures")
+        meas.register_custom_parameter("wavelength", label="m")
+        meas.register_custom_parameter("v_attenuator", label="V")
 
 
         with meas.run() as datasaver:
@@ -458,7 +463,9 @@ class snspd:
                                     ("interval", interval), 
                                     ("n_captures", n_captures),
                                     ("CR1", CR1), 
-                                    ("CR2", CR2))
+                                    ("CR2", CR2),
+                                    ('v_attenuator', float(self.p_att.ask('VOLT?'))),
+                                    ('wavelength', spc.c/self.laser.frequency_coarse()))
 
     def capture_trace(self, MS, dmm, yoko, p_att, station=None):
         ''' Parameters 
@@ -706,7 +713,7 @@ class snspd:
         meas.register_custom_parameter("CR1", label="cps")
         meas.register_custom_parameter("CR2", label="cps")
         meas.register_custom_parameter("v_attenuator", label="V")
-        meas.register_custom_parameter("wavelength_range", label="nm")
+        meas.register_custom_parameter("wavelength", label="nm")
 
 
 
@@ -806,7 +813,7 @@ class snspd:
                                     ("CR1", CR1), 
                                     ("CR2", CR2), 
                                     ("v_attenuator", float(p_att.ask('VOLT?'))), 
-                                    ('wavelength_range', wav))
+                                    ('wavelength', wav))
 
     def match(self, test, val_array, tol=None): 
         #TODO: add functionality to allow for descendign values!! 
