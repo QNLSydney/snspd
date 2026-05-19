@@ -492,6 +492,8 @@ class snspd:
         meas.register_parameter(dmm.volt)
         meas.register_parameter(yoko.current) # minimise number of things required in a global namespace 
         meas.register_custom_parameter("v_attenuator", label="v_attenuator")
+        meas.register_custom_parameter("wavelength", label="m")
+        meas.register_custom_parameter("laser_status")
         
         #TODO: should set trigger level depending on currents - thresholds
         # 
@@ -514,7 +516,9 @@ class snspd:
                         ("h_samples", h_samples),
                         ("h_position_perc", h_position_perc),
                         (dmm.volt, dmm.volt()),
-                        ('v_attenuator', float(p_att.ask('VOLT?'))))
+                        ('v_attenuator', float(p_att.ask('VOLT?'))),
+                        ('wavelength', spc.c/self.laser.frequency_coarse()),
+                        ("laser_status", self.laser.enable()))
 
     def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
