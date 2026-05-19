@@ -152,19 +152,19 @@ device_line_2:
     # currents are in amps 
     # the current is the lower bound of the range 
     range1: 
-      current: -13e-6
-      threshold1: 342e-3
-      threshold2: 120e-3 # lower range getting close to noise floor 
-      v_scale: # in case rescaling needs to happen 
+      current: -9e-6
+      threshold1: 60e-3
+      threshold2: 124e-3 # lower range getting close to noise floor 
+      v_scale: 100e-3 # in case rescaling needs to happen 
     range2: 
-      current: -8e-6
-      threshold1: 198e-3
-      threshold2: 60e-3
-      v_scale: 
+      current: -4e-6
+      threshold1: 52e-3
+      threshold2: 36e-3
+      v_scale: 50e-3
     range3:
       current: 0
-      threshold1: 
-      threshold2: 
+      threshold1: 24e-3
+      threshold2: 18e-3
       v_scale: 50e-3
   IDs: 
     critical_current: 242

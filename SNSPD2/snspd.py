@@ -388,6 +388,7 @@ class snspd:
         meas.register_custom_parameter("CR2", label="cps", setpoints=(yoko.current,))
         meas.register_custom_parameter("n_captures")
         meas.register_custom_parameter("power90", label="W")
+        meas.register_custom_parameter('v_scale', label='V')
 
 
         with meas.run() as datasaver:
@@ -410,12 +411,8 @@ class snspd:
                 if osc.channels[0].clipping(): 
                     print('Error: Clipping')
 
-                threshold1, threshold2 = self.set_thresholds(current, thresholds)
-
-
-                # Set thresholds  
-                osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
-                osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+                # Setting thresholds 
+                self.set_thresholds(osc, yoko, thresholds)
 
                 time.sleep(5)
 
@@ -458,8 +455,8 @@ class snspd:
                 # Save data 
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
-                                    ("threshold1", threshold1), 
-                                    ("threshold2", threshold2), 
+                                    ("threshold1",  osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?')), 
+                                    ("threshold2",  osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?')), 
                                     ("total_counts1", total_counts1), 
                                     ("total_counts2", total_counts2), 
                                     ("counts1", counts1), 
@@ -471,7 +468,8 @@ class snspd:
                                     ("CR2", CR2),
                                     ('v_attenuator', float(self.p_att.ask('VOLT?'))),
                                     ('wavelength', spc.c/self.laser.frequency_coarse()), 
-                                    ("power90", pmeter90.power()))
+                                    ("power90", pmeter90.power()),
+                                    ("v_scale", osc.channels[0].vertical_scale()))
 
     def capture_trace(self, MS, dmm, yoko, p_att, station=None):
         ''' Parameters 
@@ -666,16 +664,25 @@ class snspd:
                                     ("pmeter90", pmeter90.power()))
 
 
-    def set_thresholds(self, current, thresholds):
+    def set_thresholds(self, osc, yoko, thresholds):
 
         '''Note: currents represent lower limits
+        Sets oscilloscope current and vertical scaling based on current on yokogawa 
         '''
+        current = yoko.current()
         for key in thresholds.keys():
             # check if test current magnitude is greater than each threshold 
             if np.abs(current) >= np.abs(float(thresholds[key]['current'])):
                 threshold1 = float(thresholds[key]['threshold1']) # in volts
                 threshold2 = float(thresholds[key]['threshold2']) # in volt
-                return threshold1, threshold2
+                v_scale = float(thresholds[key]['v_scale']) 
+
+                # Set thresholds on oscilloscope   
+                osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
+                osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+
+                # Set corresponding vertical scaling 
+                osc.channels[0].vertical_scale(v_scale)
     
     def ramp_yoko_current(self, yoko, target, step):
         if step <=0: 
