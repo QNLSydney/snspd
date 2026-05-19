@@ -354,6 +354,7 @@ class snspd:
         osc = self.osc if osc is None else osc 
         pmeter90 = self.pms120 if pmeter90 is None else pmeter90 
         
+        
 
         # Unpack parameters for device 
         device_name = device['name']
@@ -364,7 +365,7 @@ class snspd:
             thresholds = device['thresholds']
 
         print('Set standard oscilloscope parameters for counts')
-        self.MSO5_set_standard_counts(osc)
+        self.MSO5_set_standard_counts(device, osc)
         time.sleep(2)
 
         # Update experiment snapshot 
@@ -407,12 +408,24 @@ class snspd:
                 
                 # Set current 
                 yoko.current(current)
-
-                if osc.channels[0].clipping(): 
-                    print('Error: Clipping')
+                time.sleep(2)
 
                 # Setting thresholds 
-                self.set_thresholds(osc, yoko, thresholds)
+                threshold1, threshold2, v_scale = self.set_thresholds(osc, yoko, thresholds)
+
+                # Set thresholds on oscilloscope   
+                osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
+                osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+
+                # Set corresponding vertical scaling 
+                osc.channels[0].vertical_scale(v_scale)
+
+                print(osc.channels[0].vertical_scale( ))
+
+                time.sleep(5)
+
+                if osc.channels[0].clipping(): 
+                    raise Exception('Error: Clipping') # TODO: make these printouts exceptions 
 
                 time.sleep(5)
 
@@ -455,8 +468,8 @@ class snspd:
                 # Save data 
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
-                                    ("threshold1",  osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?')), 
-                                    ("threshold2",  osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?')), 
+                                    ("threshold1",  float(osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("threshold2",  float(osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
                                     ("total_counts1", total_counts1), 
                                     ("total_counts2", total_counts2), 
                                     ("counts1", counts1), 
@@ -469,7 +482,7 @@ class snspd:
                                     ('v_attenuator', float(self.p_att.ask('VOLT?'))),
                                     ('wavelength', spc.c/self.laser.frequency_coarse()), 
                                     ("power90", pmeter90.power()),
-                                    ("v_scale", osc.channels[0].vertical_scale()))
+                                    ("v_scale", float(osc.channels[0].vertical_scale())))
 
     def capture_trace(self, MS, dmm, yoko, p_att, station=None):
         ''' Parameters 
@@ -569,6 +582,7 @@ class snspd:
         meas.register_custom_parameter("n_captures")
         meas.register_custom_parameter("wavelength", label="m")
         meas.register_custom_parameter("pmeter90", label="W")
+        meas.register_custom_parameter('v_scale', label='V')
         
 
         with meas.run() as datasaver:
@@ -600,12 +614,20 @@ class snspd:
                 time.sleep(1)
                 print(f'Starting V={p_att.ask('VOLT?')}')
                 
-                # Set thresholds based on current 
-                threshold1, threshold2 = self.set_thresholds(current, thresholds)
+                ### ADDED NEW THRESHOLDS with scaling ###
+                # Setting thresholds 
+                threshold1, threshold2, v_scale = self.set_thresholds(MS, yoko, thresholds)
 
-                # Set thresholds  
+                # Set thresholds on oscilloscope   
                 MS.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
                 MS.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+
+                # Set corresponding vertical scaling 
+                MS.channels[0].vertical_scale(v_scale)
+
+                print(MS.channels[0].vertical_scale( ))
+
+                ######
 
                 time.sleep(5)
 
@@ -648,8 +670,8 @@ class snspd:
                 # Save data 
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
-                                    ("threshold1", threshold1), 
-                                    ("threshold2", threshold2), 
+                                    ("threshold1", float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("threshold2", float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
                                     ("total_counts1", total_counts1), 
                                     ("total_counts2", total_counts2), 
                                     ("counts1", counts1), 
@@ -661,7 +683,8 @@ class snspd:
                                     ("CR2", CR2), 
                                     ("v_attenuator", v),
                                     ('wavelength', spc.c/self.laser.frequency_coarse()), 
-                                    ("pmeter90", pmeter90.power()))
+                                    ("pmeter90", pmeter90.power()),
+                                    ("v_scale", float(MS.channels[0].vertical_scale())))
 
 
     def set_thresholds(self, osc, yoko, thresholds):
@@ -677,12 +700,8 @@ class snspd:
                 threshold2 = float(thresholds[key]['threshold2']) # in volt
                 v_scale = float(thresholds[key]['v_scale']) 
 
-                # Set thresholds on oscilloscope   
-                osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
-                osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+                return threshold1, threshold2, v_scale
 
-                # Set corresponding vertical scaling 
-                osc.channels[0].vertical_scale(v_scale)
     
     def ramp_yoko_current(self, yoko, target, step):
         if step <=0: 
@@ -741,6 +760,7 @@ class snspd:
         meas.register_custom_parameter("v_attenuator", label="V")
         meas.register_custom_parameter("wavelength", label="nm")
         meas.register_custom_parameter("pmeter90", label="W")
+        meas.register_custom_parameter('v_scale', label='V')
 
 
 
@@ -779,12 +799,20 @@ class snspd:
                 h_time = MS.horizontal_scale()*MS.horizontal_divisions()
         
                 
-                # Set thresholds based on current 
-                threshold1, threshold2 = self.set_thresholds(yoko.current(), thresholds)
+                ### ADDED NEW THRESHOLDS with scaling ###
+                # Setting thresholds 
+                threshold1, threshold2, v_scale = self.set_thresholds(MS, yoko, thresholds)
 
-                # Set thresholds  
+                # Set thresholds on oscilloscope   
                 MS.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
                 MS.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+
+                # Set corresponding vertical scaling 
+                MS.channels[0].vertical_scale(v_scale)
+
+                print(MS.channels[0].vertical_scale( ))
+
+                ######
 
                 time.sleep(5)
 
@@ -828,8 +856,8 @@ class snspd:
                 # Save data 
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
-                                    ("threshold1", threshold1), 
-                                    ("threshold2", threshold2), 
+                                    ("threshold1",  float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("threshold2", float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
                                     ("total_counts1", total_counts1), 
                                     ("total_counts2", total_counts2), 
                                     ("counts1", counts1), 
@@ -841,7 +869,8 @@ class snspd:
                                     ("CR2", CR2), 
                                     ("v_attenuator", float(p_att.ask('VOLT?'))), 
                                     ('wavelength', wav),
-                                    ("pmeter90", pmeter90.power()))
+                                    ("pmeter90", pmeter90.power()),
+                                    ("v_scale", float(MS.channels[0].vertical_scale())))
             
 
     def match(self, test, val_array, tol=None): 

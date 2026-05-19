@@ -168,9 +168,9 @@ device_line_2:
       v_scale: 50e-3
   IDs: 
     critical_current: 242
-    dark_counts: 
+    dark_counts: 247
     light_counts:
-      run_5v: 
+      run_5v: 246
       run_5-5v: # 5.5V 
     counts_vs_attenuation:
       run1: # Bias current -14uA
