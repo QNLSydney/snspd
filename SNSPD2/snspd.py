@@ -187,21 +187,23 @@ class snspd:
         bs90 = power90/(power10+power90)
         return bs10, bs90
 
-    def MSO5_set_standard_counts(self, MS=None):
+    def MSO5_set_standard_counts(self, device, MS=None):
         '''Input: optional argument for time on horizontal axis of oscilloscope
             Optional argument for vertical scale of oscilloscope (10 divisions, set in V/div) 
         '''
         MS = self.osc if MS is None else MS
 
+        device_count_settings = device['counts_axes']
+
         MS.horizontal_mode('MANual') # set manual mode to allow parameters to be set
         MS.horizontal_mode_manual_configure('RECORDLength')
         MS.horizontal_samplerate(625e6)
-        h_scale = float(self.counts_h_time)/float(MS.horizontal_divisions())
+        h_scale = float(device_count_settings['counts_h_time'])/float(MS.horizontal_divisions())
         MS.horizontal_scale(h_scale)
-        MS.horizontal_position(self.counts_h_pos)
+        MS.horizontal_position(device_count_settings['counts_h_pos'])
 
         
-        MS.channels[0].vertical_scale(self.counts_v_scale)
+        MS.channels[0].vertical_scale(device_count_settings['counts_v_scale'])
         MS.channels[0].termination(50)
         MS.channels[0].bandwidth(1e9)
         MS.channels[0].vertical_offset(0)
@@ -209,7 +211,7 @@ class snspd:
         MS.channels[0].vterm_bias(0)
         MS.channels[0].scale_ratio(1) # <- just set this as it is 
         MS.channels[0].invert('OFF')
-        MS.trigger_channels[0].ch1_trigger_level(self.counts_v_trigger)
+        MS.trigger_channels[0].ch1_trigger_level(device_count_settings['counts_v_trigger'])
     
     def MSO5_set_standard_trace(self, MS=None, device=None):
         '''Input: optional argument for time on horizontal axis of oscilloscope
@@ -493,7 +495,7 @@ class snspd:
         meas.register_parameter(yoko.current) # minimise number of things required in a global namespace 
         meas.register_custom_parameter("v_attenuator", label="v_attenuator")
         meas.register_custom_parameter("wavelength", label="m")
-        meas.register_custom_parameter("laser_status")
+        # meas.register_custom_parameter("laser_status")
         
         #TODO: should set trigger level depending on currents - thresholds
         # 
@@ -517,8 +519,9 @@ class snspd:
                         ("h_position_perc", h_position_perc),
                         (dmm.volt, dmm.volt()),
                         ('v_attenuator', float(p_att.ask('VOLT?'))),
-                        ('wavelength', spc.c/self.laser.frequency_coarse()),
-                        ("laser_status", self.laser.enable()))
+                        ('wavelength', spc.c/self.laser.frequency_coarse()))
+                        # ("laser_status", str(self.laser.enable())))
+                        # TODO: should uncomment that and make it work ^
 
     def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
