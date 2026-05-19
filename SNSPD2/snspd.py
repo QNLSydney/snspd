@@ -116,6 +116,7 @@ class snspd:
         meas.register_custom_parameter("power90", label="W")
         meas.register_custom_parameter("attenuation", label="dB")
 
+
         with meas.run() as datasaver:
             print(datasaver.run_id)
 
@@ -333,7 +334,7 @@ class snspd:
         return np.average(load_by_id(ID).get_parameter_data()[key][key])
     
         
-    def MSO5_counts_vs_current(self, device, n_captures, interval=1, osc=None, dmm=None, yoko=None, currents=None, thresholds=None, station=None):
+    def MSO5_counts_vs_current(self, device, n_captures, interval=1, osc=None, dmm=None, yoko=None, pmeter90=None, currents=None, thresholds=None, station=None):
         '''
         interval is specified in seconds. FOr MSO5 must be minimum 1s
         '''
@@ -349,6 +350,7 @@ class snspd:
         yoko = self.yoko if yoko is None else yoko
         dmm = self.dmm if dmm is None else dmm 
         osc = self.osc if osc is None else osc 
+        pmeter90 = self.pms120 if pmeter90 is None else pmeter90 
         
 
         # Unpack parameters for device 
@@ -369,6 +371,8 @@ class snspd:
         meas = Measurement()
         meas.register_parameter(dmm.volt)
         meas.register_parameter(yoko.current)
+        meas.register_custom_parameter("wavelength", label="m")
+        meas.register_custom_parameter("v_attenuator", label="V")
         meas.register_custom_parameter("threshold1", label="V")
         meas.register_custom_parameter("threshold2", label="V")
         meas.register_custom_parameter("total_counts1", label="counts")
@@ -381,8 +385,7 @@ class snspd:
         meas.register_custom_parameter("CR1", label="cps", setpoints=(yoko.current,))
         meas.register_custom_parameter("CR2", label="cps", setpoints=(yoko.current,))
         meas.register_custom_parameter("n_captures")
-        meas.register_custom_parameter("wavelength", label="m")
-        meas.register_custom_parameter("v_attenuator", label="V")
+        meas.register_custom_parameter("power90", label="W")
 
 
         with meas.run() as datasaver:
@@ -465,7 +468,8 @@ class snspd:
                                     ("CR1", CR1), 
                                     ("CR2", CR2),
                                     ('v_attenuator', float(self.p_att.ask('VOLT?'))),
-                                    ('wavelength', spc.c/self.laser.frequency_coarse()))
+                                    ('wavelength', spc.c/self.laser.frequency_coarse()), 
+                                    ("power90", pmeter90.power()))
 
     def capture_trace(self, MS, dmm, yoko, p_att, station=None):
         ''' Parameters 
@@ -512,7 +516,7 @@ class snspd:
                         (dmm.volt, dmm.volt()),
                         ('v_attenuator', float(p_att.ask('VOLT?'))))
 
-    def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, device, v_att_range, n_captures, interval=1, current=None, thresholds=None,  station=None):
+    def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
         interval is specified in seconds. FOr MSO5 must be minimum 1s
         '''
@@ -530,6 +534,8 @@ class snspd:
         
         if thresholds is None: 
             thresholds = device['thresholds']
+        
+        pmeter90 = self.pms120 if pmeter90 is None else pmeter90
 
         print('Set standard oscilloscope parameters for counts')
         self.MSO5_set_standard_counts(MS)
@@ -556,6 +562,9 @@ class snspd:
         meas.register_custom_parameter("CR1", label="cps", setpoints=("v_attenuator",))
         meas.register_custom_parameter("CR2", label="cps", setpoints=("v_attenuator",))
         meas.register_custom_parameter("n_captures")
+        meas.register_custom_parameter("wavelength", label="m")
+        meas.register_custom_parameter("pmeter90", label="W")
+        
 
         with meas.run() as datasaver:
             print(datasaver.run_id)
@@ -645,7 +654,10 @@ class snspd:
                                     ("n_captures", n_captures),
                                     ("CR1", CR1), 
                                     ("CR2", CR2), 
-                                    ("v_attenuator", v))
+                                    ("v_attenuator", v),
+                                    ('wavelength', spc.c/self.laser.frequency_coarse()), 
+                                    ("pmeter90", pmeter90.power()))
+
 
     def set_thresholds(self, current, thresholds):
 
@@ -714,6 +726,7 @@ class snspd:
         meas.register_custom_parameter("CR2", label="cps")
         meas.register_custom_parameter("v_attenuator", label="V")
         meas.register_custom_parameter("wavelength", label="nm")
+        meas.register_custom_parameter("pmeter90", label="W")
 
 
 
@@ -745,7 +758,7 @@ class snspd:
                 # ############################ TURN LASER ON ############################ 
                 laser.enable(True)
                 print(f'Laser enable status: {laser.enable()}')
-                time.sleep(10)
+                time.sleep(20) 
 
 
                 # Extract the amount of time in one trace 
@@ -798,7 +811,7 @@ class snspd:
                 CR2 = total_counts2/meas_time
             
                 
-                    # Save data 
+                # Save data 
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
                                     ("threshold1", threshold1), 
@@ -813,7 +826,9 @@ class snspd:
                                     ("CR1", CR1), 
                                     ("CR2", CR2), 
                                     ("v_attenuator", float(p_att.ask('VOLT?'))), 
-                                    ('wavelength', wav))
+                                    ('wavelength', wav),
+                                    ("pmeter90", pmeter90.power()))
+            
 
     def match(self, test, val_array, tol=None): 
         #TODO: add functionality to allow for descendign values!! 
