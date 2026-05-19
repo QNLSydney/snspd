@@ -107,14 +107,16 @@ device_line_1:
   IDs: 
     critical_current: 41
     dark_counts: 82
-    light_counts: 80
+    light_counts:
+      run_5v: 80 
+      run_5-5v: 126 # 5.5V 
     counts_vs_attenuation:
       run1: 87 # Bias current -14uA
       run2: [100, 101, 102, 103, 104, 105, 106, 107] # Range of bias currents 
       run3: [110, 111, 112, 113]
       run4: [143]
     wavelength: 
-      run5_5v: 124 # 5.5V 
+      run5-5v: 124 # 5.5V 
       run5v: 141 # 5V applied
     Nphotons: 
       
