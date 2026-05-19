@@ -469,7 +469,7 @@ class snspd:
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
                                     ("threshold1",  float(osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
-                                    ("threshold2",  float(osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("threshold2",  float(osc.ask(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold?'))), 
                                     ("total_counts1", total_counts1), 
                                     ("total_counts2", total_counts2), 
                                     ("counts1", counts1), 
@@ -534,7 +534,7 @@ class snspd:
                         # ("laser_status", str(self.laser.enable())))
                         # TODO: should uncomment that and make it work ^
 
-    def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
+    def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, pmeter90, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
         interval is specified in seconds. FOr MSO5 must be minimum 1s
         '''
@@ -556,12 +556,11 @@ class snspd:
         pmeter90 = self.pms120 if pmeter90 is None else pmeter90
 
         print('Set standard oscilloscope parameters for counts')
-        self.MSO5_set_standard_counts(MS)
+        self.MSO5_set_standard_counts(device, MS)
         time.sleep(2)
 
         # Update station
         self.update_station(station)
-
 
         # Establish measurement
         meas = Measurement()
@@ -671,7 +670,7 @@ class snspd:
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
                                     ("threshold1", float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
-                                    ("threshold2", float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("threshold2", float(MS.ask(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold?'))), 
                                     ("total_counts1", total_counts1), 
                                     ("total_counts2", total_counts2), 
                                     ("counts1", counts1), 
@@ -735,7 +734,7 @@ class snspd:
             thresholds = device['thresholds']
 
         print('Set standard oscilloscope parameters for counts')
-        self.MSO5_set_standard_counts(MS)
+        self.MSO5_set_standard_counts(device=device, MS=MS)
         time.sleep(2)
 
         # Update station
@@ -771,7 +770,7 @@ class snspd:
             datasaver.dataset.add_metadata("device", device_name)
 
             if MS.channels[0].clipping(): 
-                print('Error: Clipping')
+                raise Exception('Error: Clipping')
 
 
             for wav in wavelength_range: # <- sweep wavelength of laser 
@@ -857,7 +856,7 @@ class snspd:
                 datasaver.add_result((yoko.current, yoko.current()),
                                     (dmm.volt, dmm.volt()),
                                     ("threshold1",  float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
-                                    ("threshold2", float(MS.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("threshold2", float(MS.ask(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold?'))), 
                                     ("total_counts1", total_counts1), 
                                     ("total_counts2", total_counts2), 
                                     ("counts1", counts1), 
