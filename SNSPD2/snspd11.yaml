@@ -152,7 +152,7 @@ device_line_2:
     # currents are in amps 
     # the current is the lower bound of the range 
     range1: 
-      current: -9e-6
+      current: -8e-6
       threshold1: 60e-3
       threshold2: 124e-3 # lower range getting close to noise floor 
       v_scale: 100e-3 # in case rescaling needs to happen 
@@ -168,19 +168,25 @@ device_line_2:
       v_scale: 50e-3
   IDs: 
     critical_current: 242
-    dark_counts: 247
+    dark_counts: 
+      run1: 247 
+      run2: 269
     light_counts:
       run_5v: 246
+      run_5v_2: 252
       run_5-5v: # 5.5V 
     counts_vs_attenuation:
-      run1: # Bias current -14uA
+      run1: 253 # Current set from peak of ID 252
       run2: # Range of bias currents 
       run3: 
       run4: 
     wavelength: 
       run5-5v: # 5.5V 
-      run5v:  # 5V applied
+      run5v: 254 # 5V applied
     Nphotons:
+    traces: 
+      start: 257
+      stop: 268
 
 
 # # Parameters pertaining to instruments 
