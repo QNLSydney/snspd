@@ -97,14 +97,17 @@ device_line_1:
       current: -13e-6
       threshold1: 342e-3
       threshold2: 120e-3 # lower range getting close to noise floor 
+      v_scale: 150e-3
     range2: 
       current: -8e-6
       threshold1: 198e-3
       threshold2: 60e-3
+      v_scale: 150e-3
     range3:
       current: 0
       threshold1: 78e-3
       threshold2: 48e-3
+      v_scale: 150e-3
   IDs: 
     critical_current: 41
     dark_counts: 82
@@ -120,7 +123,9 @@ device_line_1:
       run5-5v: 124 # 5.5V 
       run5v: 141 # 5V applied
     Nphotons: 
-    trace_capture: [] # TODO: add this range in 
+    traces: 
+      start: 231
+      stop: 235
       
       
 
@@ -166,6 +171,12 @@ device_line_2:
       threshold1: 24e-3
       threshold2: 18e-3
       v_scale: 50e-3
+  thresholds_error_test:
+      range1:  
+        current: 0
+        threshold1: 24e-3
+        threshold2: 18e-3
+        v_scale: 50e-3
   IDs: 
     critical_current: 242
     dark_counts: 
