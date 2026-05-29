@@ -1,0 +1,231 @@
+### OPTICS CALIBRAITON ###
+# Beam splitter values 
+bs10: 0.08482445422151369 # from average of ID 9, 10, 11
+bs90: 0.9151755457784864
+
+# Calibration arrangement for instruments 
+pmeter10: pms120
+pmeter90: pms120
+
+# Calibrate first attenuator 
+att_screw_name: 'VOA50PM'
+att_blue_name: 'V1550PA'
+att_screw_calibration_id: 18 # 300s
+att_blue_v_attenuator_range:
+  start: 3.4 # V
+  stop: 5.55 
+  step: 0.05
+
+
+# v_attenuator = np.arange(3.4, 5.55, 0.05)
+
+att_blue_calibration_ids:
+  start1: 22
+  stop1: 39
+  start2: 40
+  start3: 42
+  stop3: 49
+  start4: 50
+  stop4: 68
+
+
+att_fibre_cooldown_10: # calculated SNSPD11_1
+power_90_average_id: 
+# photon_number_id: 
+
+total_att_ID: 133
+
+# Nphotons_ID: 83
+# Nphotons_ID_6V: 
+# Nphotons_wavID_5_5v: 137
+NphotonsID: 
+  vs_dB: 83 # 1550nm, vs attenuation 
+  vs_wav_5_5: 137 # 5.5V, vs wavelength
+  vs_wav_5: 142 # 5V, vs wavelength 
+
+
+# Oscilloscope generic parameters for counts 
+# counts_h_time: 100e-3
+# counts_h_pos: 0
+# counts_v_scale: 150e-3
+# counts_v_trigger: 0
+
+# Oscilloscope parameters for trace 
+trace_h_time: 3e-6
+trace_h_pos: 10 # specified as percentage
+trace_v_scale: 150e-3
+trace_v_trigger_high: 100e-3 # adjusted for trace capture and setting thresholds automatically
+trace_v_trigger: 0.03
+
+laser_wav_range:
+  start: 1528e-9
+  stop: 1565e-9
+  step: 1e-9
+
+  # wavelength_range = np.arange(1528e-9, 1565e-9, 1e-9) # wavelength range of PPCL550
+
+### DEVICE 1 ###
+device_line_1:
+  name: 'R9C9'
+  currents: [ 0.000e+00, -2.500e-07, -5.000e-07, -7.500e-07, -1.000e-06,
+       -1.250e-06, -1.500e-06, -1.750e-06, -2.000e-06, -2.250e-06,
+       -2.500e-06, -2.750e-06, -3.000e-06, -3.250e-06, -3.500e-06,
+       -3.750e-06, -4.000e-06, -4.250e-06, -4.500e-06, -4.750e-06,
+       -5.000e-06, -5.250e-06, -5.500e-06, -5.750e-06, -6.000e-06,
+       -6.250e-06, -6.500e-06, -6.750e-06, -7.000e-06, -7.250e-06,
+       -7.500e-06, -7.750e-06, -8.000e-06, -8.250e-06, -8.500e-06,
+       -8.750e-06, -9.000e-06, -9.250e-06, -9.500e-06, -9.750e-06,
+       -1.000e-05, -1.025e-05, -1.050e-05, -1.075e-05, -1.100e-05,
+       -1.125e-05, -1.150e-05, -1.175e-05, -1.200e-05, -1.225e-05,
+       -1.250e-05, -1.275e-05, -1.300e-05, -1.325e-05, -1.350e-05,
+       -1.375e-05, -1.400e-05, -1.425e-05, -1.450e-05, -1.475e-05,
+       -1.500e-05] # from ID 41
+  # v_attenuator_vals:
+  #   att_blue_v_1: 5
+  #   att_blue_v_2: 5.5
+  # bias_current: -14e-6 # max SDE current 
+#   counts_axes: 
+#     counts_h_time: 100e-3 # <- moved these into device, but they were used outside device parameters for Line 1
+#     counts_h_pos: 0
+#     counts_v_scale: 150e-3
+#     counts_v_trigger: 0
+#   thresholds:
+#     # ranges must go from high to low current, assumes the loop goes high to low
+#     # thresholds are in volts 
+#     # currents are in amps 
+#     # the current is the lower bound of the range 
+#     range1: 
+#       current: -13e-6
+#       threshold1: 342e-3
+#       threshold2: 120e-3 # lower range getting close to noise floor 
+#       v_scale: 150e-3
+#     range2: 
+#       current: -8e-6
+#       threshold1: 198e-3
+#       threshold2: 60e-3
+#       v_scale: 150e-3
+#     range3:
+#       current: 0
+#       threshold1: 78e-3
+#       threshold2: 48e-3
+#       v_scale: 150e-3
+#   IDs: 
+#     critical_current: 41
+#     dark_counts: 82
+#     light_counts:
+#       run_5v: 80 
+#       run_5-5v: 126 # 5.5V 
+#     counts_vs_attenuation:
+#       run1: 87 # Bias current -14uA
+#       run2: [100, 101, 102, 103, 104, 105, 106, 107] # Range of bias currents 
+#       run3: [110, 111, 112, 113]
+#       run4: [143]
+#     wavelength: 
+#       run5-5v: 124 # 5.5V 
+#       run5v: 141 # 5V applied
+#     Nphotons: 
+#     traces: 
+#       start: 231
+#       stop: 235
+      
+      
+
+    # lower threshold well above the noise floor at all points, set thresholds by sweeping current and observing 
+    # that search numbers were the same 
+
+### DEVICE 2 ## 
+device_line_2: 
+  name: 'R7C6' 
+  currents:  [ 0.000e+00, -2.500e-07, -5.000e-07, -7.500e-07, -1.000e-06,
+       -1.250e-06, -1.500e-06, -1.750e-06, -2.000e-06, -2.250e-06,
+       -2.500e-06, -2.750e-06, -3.000e-06, -3.250e-06, -3.500e-06,
+       -3.750e-06, -4.000e-06, -4.250e-06, -4.500e-06, -4.750e-06,
+       -5.000e-06, -5.250e-06, -5.500e-06, -5.750e-06, -6.000e-06,
+       -6.250e-06, -6.500e-06, -6.750e-06, -7.000e-06, -7.250e-06,
+       -7.500e-06, -7.750e-06, -8.000e-06, -8.250e-06, -8.500e-06,
+       -8.750e-06, -9.000e-06, -9.250e-06, -9.500e-06, -9.750e-06,
+       -1.000e-05, -1.025e-05, -1.050e-05, -1.075e-05, -1.100e-05,
+       -1.125e-05, -1.150e-05, -1.175e-05, -1.200e-05, -1.225e-05,
+       -1.250e-05, -1.275e-05, -1.300e-05] # from ID 242
+  counts_axes: 
+    counts_h_time: 100e-3 # <- moved these into device, but they were used outside device parameters for Line 1
+    counts_h_pos: 0
+    counts_v_scale: 50e-3
+    counts_v_trigger: 0
+  thresholds:
+    # ranges must go from high to low current, assumes the loop goes high to low
+    # thresholds are in volts 
+    # currents are in amps 
+    # the current is the lower bound of the range 
+    range1: 
+      current: -8e-6
+      threshold1: 60e-3
+      threshold2: 124e-3 # lower range getting close to noise floor 
+      v_scale: 100e-3 # in case rescaling needs to happen 
+    range2: 
+      current: -4e-6
+      threshold1: 52e-3
+      threshold2: 36e-3
+      v_scale: 50e-3
+    range3:
+      current: 0
+      threshold1: 24e-3
+      threshold2: 18e-3
+      v_scale: 50e-3
+  thresholds_error_test:
+      range1:  
+        current: 0
+        threshold1: 24e-3
+        threshold2: 18e-3
+        v_scale: 50e-3
+  IDs: 
+    critical_current: 242
+    dark_counts: 
+      run1: 247 
+      run2: 269
+    light_counts:
+      run_5v: 246
+      run_5v_2: 252
+      run_5-5v: # 5.5V 
+    counts_vs_attenuation:
+      run1: 253 # Current set from peak of ID 252
+      run2: # Range of bias currents 
+      run3: 
+      run4: 
+    wavelength: 
+      run5-5v: # 5.5V 
+      run5v: 254 # 5V applied
+    Nphotons:
+    traces: 
+      start: 257
+      stop: 268
+
+
+# # Parameters pertaining to instruments 
+# self.att_screw_name = 'VOA50PM'
+# self.att_blue_name = 'V1550PA'
+# self.bs10 = 0.08819209378534265
+# self.bs90 = 0.9118079062146573
+# self.fourK_amp_gain_centre = 45
+# self.fourK_amp_gain_error = 5
+# self.RT_amp_gain_centre = 21.74 # dB 
+# self.RT_amp_gain_error = 3.02 # dB 
+# self.connection1 = 'single fibre'
+# self.connection2 = 'ferrule to ferrule'
+
+
+# # Create config for parameters that pertain to devices 
+# self.h_time_counts = 100e-3
+# self.h_pos_counts = 0 
+# self.v_scale_counts = 150e-3 
+# self.device_1_name = 'Line 1 R7C6'
+# self.device_2_name = 'Line 2 Old Device'
+
+# # Parameters pertaining to a particular measurement run - maybe this can be a separate class 
+# self.att_screw_calibration_id = 165
+# # self.att_blue_calibration_avg_id = 441 # from IDs 167-239 
+# self.att_blue_calibration_avg_id = 459 # updated to include calibration times
+# self.system_dark_counts_id = 455
+# self.att_info_id = 457 # data containing votlage an corresponding total attenuation, number of photons 
+# # self.counts_vs_attenuation = 463
+# self.counts_vs_attenuation_id = 464
