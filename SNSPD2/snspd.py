@@ -484,14 +484,19 @@ class snspd:
                                     ("power90", pmeter90.power()),
                                     ("v_scale", float(osc.channels[0].vertical_scale())))
 
-    def capture_trace(self, MS, dmm, yoko, p_att, station=None):
+    def capture_trace(self, MS, dmm, yoko, p_att, trigger=None,station=None):
         ''' Parameters 
         '''
+
+        trigger = self.trace_v_trigger if trigger is None else trigger 
 
         # Set parameters for trace capture using set standard functon 
         self.MSO5_set_standard_trace(MS)
         print('Oscilloscope set for trace capture')
         time.sleep(2)
+
+        # Adjust trigger for trace capture
+        MS.trigger_channels[0].ch1_trigger_level(trigger)
 
         # Update experiment snapshot 
         self.update_station(station)
@@ -506,6 +511,7 @@ class snspd:
         meas.register_parameter(yoko.current) # minimise number of things required in a global namespace 
         meas.register_custom_parameter("v_attenuator", label="v_attenuator")
         meas.register_custom_parameter("wavelength", label="m")
+        meas.register_custom_parameter('trigger', label='V')
         # meas.register_custom_parameter("laser_status")
         
         #TODO: should set trigger level depending on currents - thresholds
@@ -530,7 +536,8 @@ class snspd:
                         ("h_position_perc", h_position_perc),
                         (dmm.volt, dmm.volt()),
                         ('v_attenuator', float(p_att.ask('VOLT?'))),
-                        ('wavelength', spc.c/self.laser.frequency_coarse()))
+                        ('wavelength', spc.c/self.laser.frequency_coarse()), 
+                        ('trigger',  MS.trigger_channels[0].ch1_trigger_level()))
                         # ("laser_status", str(self.laser.enable())))
                         # TODO: should uncomment that and make it work ^
 
