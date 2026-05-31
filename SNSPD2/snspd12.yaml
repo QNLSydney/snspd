@@ -10,6 +10,7 @@ pmeter90: pms120
 # Calibrate first attenuator 
 att_screw_name: 'VOA50PM'
 att_blue_name: 'V1550PA'
+att_yscrew_name: 'MVOA-P'
 att_screw_calibration_id: 18 # 300s
 att_blue_v_attenuator_range:
   start: 3.4 # V
@@ -54,8 +55,7 @@ NphotonsID:
 trace_h_time: 3e-6
 trace_h_pos: 10 # specified as percentage
 trace_v_scale: 150e-3
-trace_v_trigger_high: 100e-3 # adjusted for trace capture and setting thresholds automatically
-trace_v_trigger: 0.03
+trace_v_trigger: 100e-3 # adjusted for trace capture and setting thresholds automatically
 
 laser_wav_range:
   start: 1528e-9
