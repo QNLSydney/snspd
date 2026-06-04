@@ -11,16 +11,17 @@ pmeter90: pms120
 att_screw_name: 'VOA50PM'
 att_blue_name: 'V1550PA'
 att_yscrew_name: 'MVOA-P'
-att_screw_calibration_id: 18 # 300s
+att_screw_calibration_id: # 300s
+att_yscrew_calibration_id: 
 att_blue_v_attenuator_range:
-  start: 3.4 # V
-  stop: 5.55 
-  step: 0.05
+  start: # V
+  stop:  
+  step: 
 
 
 # v_attenuator = np.arange(3.4, 5.55, 0.05)
 
-att_blue_calibration_ids:
+att_blue_calibration_ids: #< not updated from run 11 
   start1: 22
   stop1: 39
   start2: 40
