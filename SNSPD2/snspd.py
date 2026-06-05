@@ -219,6 +219,8 @@ class snspd:
         '''
         MS = self.osc if MS is None else MS
 
+        # TODO: add in a check that the number is a multiple of 0.006
+
         if device is not None: 
             pass
         # TODO: add functionality to set device-specific parameters or generic parameters
@@ -484,7 +486,7 @@ class snspd:
                                     ("power90", pmeter90.power()),
                                     ("v_scale", float(osc.channels[0].vertical_scale())))
 
-    def capture_trace(self, MS, dmm, yoko, p_att, trigger=None,station=None):
+    def capture_trace(self, MS, dmm, yoko, p_att, trigger=None,wait=120, station=None):
         ''' Parameters 
         '''
 
@@ -512,13 +514,30 @@ class snspd:
         meas.register_custom_parameter("v_attenuator", label="v_attenuator")
         meas.register_custom_parameter("wavelength", label="m")
         meas.register_custom_parameter('trigger', label='V')
+        meas.register_custom_parameter('v_scale', label='V')
+
+        if not int(MS.ask('ACQUIRE:STATE?')): 
+            raise Exception('Acquisition state is not 1')
+        
         # meas.register_custom_parameter("laser_status")
         
         #TODO: should set trigger level depending on currents - thresholds
-        # 
         
         with meas.run() as datasaver:
             print(datasaver.run_id)
+
+            # Change to Single Trigger 
+            MS.write('ACQUIRE:STOPAFTER SEQUENCE')
+            MS.write('ACQUIRE:STATE ON')
+            # MS.write('*OPC?')
+
+            start = time.perf_counter()
+            while int(MS.ask('ACQUIRE:STATE?')): # state should return 0 if acquisition is stopped and a trace is captured
+                time.sleep(2)
+                if time.perf_counter()-start > wait: # if waiting for more than some value
+                    break
+            
+            print(f'Acquisition took {time.perf_counter()-start:.2f} seconds')
         
             waveform = MS.waveform_data()
             print(MS.ask('WFMOutpre?'))
@@ -537,9 +556,14 @@ class snspd:
                         (dmm.volt, dmm.volt()),
                         ('v_attenuator', float(p_att.ask('VOLT?'))),
                         ('wavelength', spc.c/self.laser.frequency_coarse()), 
-                        ('trigger',  MS.trigger_channels[0].ch1_trigger_level()))
+                        ('trigger',  MS.trigger_channels[0].ch1_trigger_level()),
+                        ("v_scale", float(MS.channels[0].vertical_scale())))
                         # ("laser_status", str(self.laser.enable())))
                         # TODO: should uncomment that and make it work ^
+            
+            # Revert to runstop 
+            MS.write('ACQUIRE:STOPAFTER RUNSTOP')
+            MS.write('ACQUIRE:STATE ON')
 
     def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, pmeter90, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
