@@ -271,9 +271,17 @@ class snspd(snspd_plotting):
         
         return load_by_id(ID)
     
-    def critical_current(self, device, dmm=None, yoko=None, tc=None, station=None):
+    def unlatch(self,yoko,t=60):
+        self.ramp_yoko_current(yoko, target=0,step=0.5e-6)
+        yoko.current(0)
+        print(f'Unlatch wait time {t}')
+        time.sleep(t)
+
+    
+    def critical_current(self, device, dmm=None, yoko=None, tc=None, unlatch=True, station=None):
         '''
         interval is specified in seconds
+        unlatch: bool, if true the function will include unlatch code
         '''
         # Read from station internally unless an instrument is passed 
         yoko = self.yoko if yoko is None else yoko
@@ -292,8 +300,12 @@ class snspd(snspd_plotting):
         meas.register_parameter(dmm.volt, setpoints=(yoko.current,))
         meas.register_custom_parameter("MC_temp", label="K")
 
-        # Set first current
-        # TODO: add ramp to first current in list and could add reverse sweep  
+        # Ramp to zero and wait 
+        if unlatch:
+            self.unlatch()
+
+        # Set first current 
+        self.ramp_yoko_current(yoko, target=currents[0], step=0.5e-6) 
         yoko.current(currents[0])
        
 
@@ -318,6 +330,10 @@ class snspd(snspd_plotting):
                                     ("MC_temp", tc.MC_temp()))
                 
                 time.sleep(10)
+        
+        # Ramp to zero and wait 
+        if unlatch:
+            self.unlatch()
 
     def photon_number(self, power90, total_attenuation, v_attenuator, wavelength):
 
