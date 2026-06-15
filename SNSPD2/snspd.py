@@ -36,7 +36,7 @@ class snspd:
         self.yoko = self.station.load_instrument("yoko", revive_instance=True)
         self.laser = self.station.load_instrument("laser", revive_instance=True)
         self.osc = self.station.load_instrument("osc", revive_instance=True)
-        self.pm100d = self.station.load_instrument("pm100d", revive_instance=True) 
+        # self.pm100d = self.station.load_instrument("pm100d", revive_instance=True) 
         self.pms120 = self.station.load_instrument("pms120", revive_instance=True)
         self.tc = self.station.load_instrument("fridge", revive_instance=True)
         self.p_att = self.station.load_instrument("dmm_keithley", revive_instance=True)
@@ -48,6 +48,9 @@ class snspd:
             _ = self.station.snapshot(update=True) # <- updates parameters in station 
             print('update station')
 
+    def list_instruments(self): 
+        rm = pyvisa.ResourceManager()
+        print(rm.list_resources())
 
     def laser_get_standard(self, laser=None):
         laser = self.laser if laser is None else laser 
@@ -147,6 +150,8 @@ class snspd:
         '''
         # TODO: extract from station rather than by passing in the attenuator? Or update p_att driver to allow for station snapshot to be used
         # Update experiment snapshot 
+
+
         self.update_station(station)
 
         # Initialize measurement 
@@ -302,9 +307,8 @@ class snspd:
 
     def photon_number(self, power90, total_attenuation, v_attenuator, wavelength):
 
-        # if total_attenuation.any() < 0: 
-        #     raise ValueError("total_attenuation should be greater than 0")
-        #     return 
+        if total_attenuation.any() < 0: 
+            raise Exception("total_attenuation should be greater than 0")
 
         # Establish measurement
         meas = Measurement()
@@ -355,16 +359,12 @@ class snspd:
         dmm = self.dmm if dmm is None else dmm 
         osc = self.osc if osc is None else osc 
         pmeter90 = self.pms120 if pmeter90 is None else pmeter90 
-        
-        
 
         # Unpack parameters for device 
         device_name = device['name']
         
         if currents is None:
             currents = device['currents']
-        if thresholds is None: 
-            thresholds = device['thresholds']
 
         print('Set standard oscilloscope parameters for counts')
         self.MSO5_set_standard_counts(device, osc)
@@ -393,7 +393,7 @@ class snspd:
         meas.register_custom_parameter("power90", label="W")
         meas.register_custom_parameter('v_scale', label='V')
 
-
+        
         with meas.run() as datasaver:
             print(datasaver.run_id)
             
@@ -413,7 +413,7 @@ class snspd:
                 time.sleep(2)
 
                 # Setting thresholds 
-                threshold1, threshold2, v_scale = self.set_thresholds(osc, yoko, thresholds)
+                threshold1, threshold2, v_scale = self.set_thresholds(yoko, device, read_current=True)
 
                 # Set thresholds on oscilloscope   
                 osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
@@ -422,12 +422,12 @@ class snspd:
                 # Set corresponding vertical scaling 
                 osc.channels[0].vertical_scale(v_scale)
 
-                print(osc.channels[0].vertical_scale( ))
+                print(osc.channels[0].vertical_scale())
 
                 time.sleep(5)
 
                 if osc.channels[0].clipping(): 
-                    raise Exception('Error: Clipping') # TODO: make these printouts exceptions 
+                    raise Exception('Error: Clipping') 
 
                 time.sleep(5)
 
@@ -486,11 +486,12 @@ class snspd:
                                     ("power90", pmeter90.power()),
                                     ("v_scale", float(osc.channels[0].vertical_scale())))
 
-    def capture_trace(self, MS, dmm, yoko, p_att, trigger=None,wait=120, station=None):
+    def capture_trace(self, MS, dmm, yoko, p_att, trigger=None, wait=120, v_scale=None, station=None):
         ''' Parameters 
         '''
 
         trigger = self.trace_v_trigger if trigger is None else trigger 
+        v_scale = self.trace_v_scale if v_scale is None else v_scale 
 
         # Set parameters for trace capture using set standard functon 
         self.MSO5_set_standard_trace(MS)
@@ -499,6 +500,7 @@ class snspd:
 
         # Adjust trigger for trace capture
         MS.trigger_channels[0].ch1_trigger_level(trigger)
+        MS.channels[0].vertical_scale(v_scale)
 
         # Update experiment snapshot 
         self.update_station(station)
@@ -539,6 +541,13 @@ class snspd:
             
             print(f'Acquisition took {time.perf_counter()-start:.2f} seconds')
         
+            try: 
+                waveform = MS.waveform_data()
+            except pyvisa.errors.VisaIOError:
+                MS.write('ACQUIRE:STOPAFTER RUNSTOP')
+                MS.write('ACQUIRE:STATE ON')
+                time.sleep(5)
+
             waveform = MS.waveform_data()
             print(MS.ask('WFMOutpre?'))
             h_samples = int(MS.ask('HORizontal:MODe:RECOrdlength?'))
@@ -717,20 +726,29 @@ class snspd:
                                     ("v_scale", float(MS.channels[0].vertical_scale())))
 
 
-    def set_thresholds(self, osc, yoko, thresholds):
-
-        '''Note: currents represent lower limits
-        Sets oscilloscope current and vertical scaling based on current on yokogawa 
+    def set_thresholds(self, yoko, device, read_current=True, current=None):
+        '''Function extracts threshold1, threshold2 and vertical scale depending on yokogawa current
         '''
-        current = yoko.current()
-        for key in thresholds.keys():
-            # check if test current magnitude is greater than each threshold 
-            if np.abs(current) >= np.abs(float(thresholds[key]['current'])):
-                threshold1 = float(thresholds[key]['threshold1']) # in volts
-                threshold2 = float(thresholds[key]['threshold2']) # in volt
-                v_scale = float(thresholds[key]['v_scale']) 
+        currents = device['currents']
+        threshold1 = device['threshold1']
+        threshold2 = device['threshold2']
+        v_scale = device['v_scale']
 
-                return threshold1, threshold2, v_scale
+        # TODO: check that the lengths are the same!!!! Otherwise indexing won't be right 
+        if read_current:
+            current = yoko.current()
+            time.sleep(2)
+        else: 
+            if current is None: 
+                raise Exception('If not reading from yoko, current value must be passed')
+
+        # match current to instrument, would have to extract index 
+        idx, _ = self.match(test=current, val_array=currents) 
+        # ^ function automatically sets tolerance to be half of the difference between the first two values in array
+
+
+        return threshold1[idx], threshold2[idx], v_scale[idx]
+        
 
     
     def ramp_yoko_current(self, yoko, target, step):
@@ -905,6 +923,8 @@ class snspd:
 
     def match(self, test, val_array, tol=None): 
         #TODO: add functionality to allow for descendign values!! 
+        """Test is to get the value 
+        """
         flag=False
         if test <0: 
             flag=True
@@ -916,9 +936,10 @@ class snspd:
         
         val = val_array[(val_array > (test_pos-tol)) & (val_array < (test_pos+tol))]
         idx = np.where((val_array > (test_pos-tol)) & (val_array < (test_pos + tol)))
+        
         val_out = -val if flag else val
         print(f'Check match:{test} (test) = {val_out}?')
-        return idx, val_out
+        return int(idx[0][0]), val_out
     
     def make_title(self, title, ID, extra=None):
         timestamp = load_by_id(ID).run_timestamp()
