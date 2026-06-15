@@ -356,7 +356,7 @@ class snspd(snspd_plotting):
         return np.average(load_by_id(ID).get_parameter_data()[key][key])
     
         
-    def MSO5_counts_vs_current(self, device, n_captures, interval=1, osc=None, dmm=None, yoko=None, pmeter90=None, currents=None, thresholds=None, station=None):
+    def MSO5_counts_vs_current(self, device, n_captures=10, interval=1, osc=None, dmm=None, yoko=None, pmeter90=None, currents=None, station=None):
         '''
         interval is specified in seconds. FOr MSO5 must be minimum 1s
         '''
@@ -499,15 +499,70 @@ class snspd(snspd_plotting):
                                     ("power90", pmeter90.power()),
                                     ("v_scale", float(osc.channels[0].vertical_scale())))
 
-    def capture_trace(self, MS, dmm, yoko, p_att, trigger=None, wait=120, v_scale=None, station=None):
+    def capture_trace(self, MS, trigger, v_scale, wait=120, station=None):
         ''' Parameters 
         '''
-
         # TODO: should arrange this like the segmented capture like in an xarray, with metadata
         # for each segment of data
 
-        trigger = self.trace_v_trigger if trigger is None else trigger 
-        v_scale = self.trace_v_scale if v_scale is None else v_scale 
+        # Set parameters for trace capture using set standard functon 
+        self.MSO5_set_standard_trace(MS)
+        print('Oscilloscope set for trace capture')
+        time.sleep(2)
+
+        # Adjust trigger for trace capture
+        MS.trigger_channels[0].ch1_trigger_level(trigger)
+        MS.channels[0].vertical_scale(v_scale)
+
+        # Update experiment snapshot 
+        self.update_station(station)
+    
+
+        if not int(MS.ask('ACQUIRE:STATE?')): 
+            raise Exception('Acquisition state is not 1')
+    
+        # Change to Single Trigger 
+        MS.write('ACQUIRE:STOPAFTER SEQUENCE')
+        MS.write('ACQUIRE:STATE ON')
+        # MS.write('*OPC?')
+
+        start = time.perf_counter()
+        while int(MS.ask('ACQUIRE:STATE?')): # state should return 0 if acquisition is stopped and a trace is captured
+            time.sleep(2)
+            if time.perf_counter()-start > wait: # if waiting for more than some value
+                break
+        
+        print(f'Acquisition took {time.perf_counter()-start:.2f} seconds')
+    
+        try: 
+            waveform = MS.waveform_data()
+        except pyvisa.errors.VisaIOError:
+            MS.write('ACQUIRE:STOPAFTER RUNSTOP')
+            MS.write('ACQUIRE:STATE ON')
+            time.sleep(5)
+
+        waveform = MS.waveform_data()
+        print(MS.ask('WFMOutpre?'))
+        h_samples = int(MS.ask('HORizontal:MODe:RECOrdlength?'))
+        h_samplerate = float(MS.ask('HORizontal:MODe:SAMPLERate?'))
+        h_position_perc = float(MS.ask('HORizontal:POSition?')) # percentage of trace 
+        h_centre = h_samples*h_position_perc/100
+        time_axis = (np.arange(0, h_samples, 1) - h_centre)/h_samplerate
+
+        time.sleep(5)
+        
+        # Revert to runstop 
+        MS.write('ACQUIRE:STOPAFTER RUNSTOP')
+        MS.write('ACQUIRE:STATE ON')
+
+        return waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis
+
+    def single_trace_capture(self, device, MS, dmm, yoko, p_att, trigger, v_scale, wait=120, station=None):
+        ''' Parameters 
+        '''
+        # TODO: should arrange this like the segmented capture like in an xarray, with metadata
+        # for each segment of data
+
 
         # Set parameters for trace capture using set standard functon 
         self.MSO5_set_standard_trace(MS)
@@ -524,75 +579,98 @@ class snspd(snspd_plotting):
         meas = Measurement()
         meas.register_custom_parameter("time_axis", label="time_axis")
         meas.register_custom_parameter("trace", label="trace", setpoints=("time_axis", ))
-        meas.register_custom_parameter("h_samples", label="h_samples")
-        meas.register_custom_parameter("h_samplerate", label="h_samplerate")
-        meas.register_custom_parameter("h_position_perc", label="h_position_perc")
+        meas.register_custom_parameter("h_samples", label="samples")
+        meas.register_custom_parameter("h_centre", label="samples")
+        meas.register_custom_parameter("h_samplerate", label="samples/sec")
+        meas.register_custom_parameter("h_position_perc", label="samples")
         meas.register_parameter(dmm.volt)
         meas.register_parameter(yoko.current) # minimise number of things required in a global namespace 
-        meas.register_custom_parameter("v_attenuator", label="v_attenuator")
-        meas.register_custom_parameter("wavelength", label="m")
+        meas.register_custom_parameter("v_attenuator", label="V")
         meas.register_custom_parameter('trigger', label='V')
         meas.register_custom_parameter('v_scale', label='V')
 
-        if not int(MS.ask('ACQUIRE:STATE?')): 
-            raise Exception('Acquisition state is not 1')
-        
-        # meas.register_custom_parameter("laser_status")
-        
-        #TODO: should set trigger level depending on currents - thresholds
         
         with meas.run() as datasaver:
             print(datasaver.run_id)
 
-            # Change to Single Trigger 
-            MS.write('ACQUIRE:STOPAFTER SEQUENCE')
-            MS.write('ACQUIRE:STATE ON')
-            # MS.write('*OPC?')
+            datasaver.dataset.add_metadata("device", device['name'])
 
-            start = time.perf_counter()
-            while int(MS.ask('ACQUIRE:STATE?')): # state should return 0 if acquisition is stopped and a trace is captured
-                time.sleep(2)
-                if time.perf_counter()-start > wait: # if waiting for more than some value
-                    break
-            
-            print(f'Acquisition took {time.perf_counter()-start:.2f} seconds')
-        
-            try: 
-                waveform = MS.waveform_data()
-            except pyvisa.errors.VisaIOError:
-                MS.write('ACQUIRE:STOPAFTER RUNSTOP')
-                MS.write('ACQUIRE:STATE ON')
-                time.sleep(5)
+            waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis = self.capture_trace(MS, trigger, wait, v_scale)
 
-            waveform = MS.waveform_data()
-            print(MS.ask('WFMOutpre?'))
-            h_samples = int(MS.ask('HORizontal:MODe:RECOrdlength?'))
-            h_samplerate = float(MS.ask('HORizontal:MODe:SAMPLERate?'))
-            h_position_perc = float(MS.ask('HORizontal:POSition?')) # percentage of trace 
-            h_centre = h_samples*h_position_perc/100
-            time_axis = (np.arange(0, h_samples, 1) - h_centre)/h_samplerate
-        
             datasaver.add_result(("trace", waveform),
                         ("time_axis", time_axis),
                         (yoko.current, yoko.current()), 
                         ("h_samplerate", h_samplerate), 
                         ("h_samples", h_samples),
                         ("h_position_perc", h_position_perc),
+                        ("h_centre", h_centre),
                         (dmm.volt, dmm.volt()),
                         ('v_attenuator', float(p_att.ask('VOLT?'))),
-                        ('wavelength', spc.c/self.laser.frequency_coarse()), 
                         ('trigger',  MS.trigger_channels[0].ch1_trigger_level()),
                         ("v_scale", float(MS.channels[0].vertical_scale())))
                         # ("laser_status", str(self.laser.enable())))
                         # TODO: should uncomment that and make it work ^
-            
-            # Revert to runstop 
-            MS.write('ACQUIRE:STOPAFTER RUNSTOP')
-            MS.write('ACQUIRE:STATE ON')
 
-    def trace_vs_current(self, device, currents=None):
+    def trace_vs_current(self, device, MS, dmm, yoko, p_att, trigger, v_scale, wait=120, currents=None, station=None):
+        ''' Parameters 
+        '''
+        # TODO: should arrange this like the segmented capture like in an xarray, with metadata
+        # for each segment of data
+
         currents = device['currents'] if currents is None else currents
-        pass
+
+        # Set parameters for trace capture using set standard functon 
+        self.MSO5_set_standard_trace(MS)
+        print('Oscilloscope set for trace capture')
+        time.sleep(2)
+
+        # Adjust trigger for trace capture
+        MS.trigger_channels[0].ch1_trigger_level(trigger)
+        MS.channels[0].vertical_scale(v_scale)
+
+        # Update experiment snapshot 
+        self.update_station(station)
+        
+        meas = Measurement()
+        meas.register_custom_parameter("time_axis", label="time_axis")
+        meas.register_custom_parameter("trace", label="trace", setpoints=("time_axis", ))
+        meas.register_custom_parameter("h_samples", label="samples")
+        meas.register_custom_parameter("h_centre", label="samples")
+        meas.register_custom_parameter("h_samplerate", label="samples/sec")
+        meas.register_custom_parameter("h_position_perc", label="samples")
+        meas.register_parameter(dmm.volt)
+        meas.register_parameter(yoko.current) # minimise number of things required in a global namespace 
+        meas.register_custom_parameter("v_attenuator", label="V")
+        meas.register_custom_parameter('trigger', label='V')
+        meas.register_custom_parameter('v_scale', label='V')
+
+        # Ramp to zero 
+        self.ramp_yoko_current(yoko, target=0, step=0.5e-6)
+        yoko.current(0)
+        
+        with meas.run() as datasaver:
+            print(datasaver.run_id)
+
+            for current in currents: 
+                yoko.current(current)
+
+                waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis = self.capture_trace(MS, trigger, wait, v_scale)
+
+                datasaver.add_result(("trace", waveform),
+                            ("time_axis", time_axis),
+                            (yoko.current, yoko.current()), 
+                            ("h_samplerate", h_samplerate), 
+                            ("h_samples", h_samples),
+                            ("h_position_perc", h_position_perc),
+                            ("h_centre", h_centre),
+                            (dmm.volt, dmm.volt()),
+                            ('v_attenuator', 3),
+                            # ('v_attenuator', float(p_att.ask('VOLT?'))),
+                            ('trigger',  MS.trigger_channels[0].ch1_trigger_level()),
+                            ("v_scale", float(MS.channels[0].vertical_scale())))
+                            # ("laser_status", str(self.laser.enable())))
+                            # TODO: should uncomment that and make it work ^
+            
 
     def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, pmeter90, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
@@ -1184,7 +1262,22 @@ class snspd(snspd_plotting):
                                     ("v_scale", float(osc.channels[0].vertical_scale())),
                                     ("frequency", float(awg.query('FREQ?'))),
                                     ("amplitude", float(awg.query('VOLT?'))))
+    
+    def plot_critical_current(self, ID, ratio=False, extra=None): 
+        data = load_by_id(ID).get_parameter_data()
+        current = data['dmm_volt']['yoko_current']
+        voltage = data['dmm_volt']['dmm_volt']
+        temp = data['MC_temp']['MC_temp']
 
+        s_extra = f'Avg. Tmxc: {np.average(temp)*1e3:.2f}mK'
+        if extra is not None:
+            s_extra += f'\n{extra}'
+
+        plt.plot(current, voltage)
+        title = self.make_title(title=f'Voltage vs Current', ID=ID, extra=s_extra)
+        plt.title(title)
+        plt.xlabel('Current (A)')
+        plt.ylabel('Voltage (V)')
 # def plot_dataset(
 
 # https://microsoft.github.io/Qcodes/_modules/qcodes/dataset/plotting.html
