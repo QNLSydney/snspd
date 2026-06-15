@@ -16,10 +16,14 @@ from qcodes import initialise_or_create_database_at, new_data_set, new_experimen
 import scipy
 import scipy.constants as spc 
 from qcodes.station import Station
+from scipy.signal import find_peaks
+import numpy as np
+import pandas as pd
+from plotting import snspd_plotting
 
 # TODO: fix all the write string errors
 
-class snspd:
+class snspd(snspd_plotting):
     def __init__(self, config=None, station_config=None):
 
         if config is not None: 
@@ -68,7 +72,9 @@ class snspd:
         pmeter.wavelength(wavelength)
         print(f'Powermeter wavelength is {pmeter.wavelength()}') 
 
-    def quick_check(self, pmeter10, pmeter90, attenuator_name='', station=None):
+    # TODO: add a function that echoes the laser state to some GUI 
+
+    def quick_check(self, pmeter10, pmeter90, attenuator=None, station=None):
         '''Input: measured transmission of beam splitter and power meter instruments
         '''
         # Update experiment snapshot 
@@ -78,6 +84,8 @@ class snspd:
         meas.register_custom_parameter("power10", label="W")
         meas.register_custom_parameter("power90", label="W")
         meas.register_custom_parameter("attenuation", label="dB")
+
+        attenuator_name = attenuator['name'] # <- added this to make consistent rule that you pass in the device you are measuring
 
         with meas.run() as datasaver:
             print(datasaver.run_id)
@@ -103,6 +111,11 @@ class snspd:
 
             time.sleep(2)
 
+    # Augment to handle case of only one powermeter connected 
+    def beam_splitter_calc(self, power10, power90): 
+        bs10 = power10/(power10+power90)
+        bs90 = power90/(power10+power90)
+        return bs10, bs90
     
     def calibrate(self, t: int, pmeter10, pmeter90, attenuator_name, station=None):
         '''Input: measured transmission of beam splitter arms, power meter instruments, 
@@ -186,11 +199,6 @@ class snspd:
             end = time.perf_counter()
             print(f'Finished in {end-start}s')
 
-            # Augment to handle case of only one powermeter connected 
-    def beam_splitter_calc(self, power10, power90): 
-        bs10 = power10/(power10+power90)
-        bs90 = power90/(power10+power90)
-        return bs10, bs90
 
     def MSO5_set_standard_counts(self, device, MS=None):
         '''Input: optional argument for time on horizontal axis of oscilloscope
@@ -248,6 +256,10 @@ class snspd:
             MS.channels[0].invert('OFF')
             MS.trigger_channels[0].ch1_trigger_level(self.trace_v_trigger)
 
+    # Run count 
+    def osc_count(self, osc):
+        # return counts1, counts2, total_counts1, total_counts2, CR1, CR2
+        pass 
 
     def load_id_from_database(self, database, exp_name, sample_name, ID):
         initialise_or_create_database_at(database)
@@ -259,7 +271,7 @@ class snspd:
         
         return load_by_id(ID)
     
-    def critical_current(self, currents, device_name, dmm=None, yoko=None, tc=None, station=None):
+    def critical_current(self, device, dmm=None, yoko=None, tc=None, station=None):
         '''
         interval is specified in seconds
         '''
@@ -268,6 +280,8 @@ class snspd:
         dmm = self.dmm if dmm is None else dmm 
         tc = self.tc if tc is None else tc 
 
+        currents = device['currents']
+        device_name = device['name']
 
         # Update station
         self.update_station(station)
@@ -405,8 +419,7 @@ class snspd:
             
             time.sleep(2)
 
-
-            for current in currents: # <- sweep voltage applied to attenuator
+            for current in currents:
                 
                 # Set current 
                 yoko.current(current)
@@ -489,6 +502,9 @@ class snspd:
     def capture_trace(self, MS, dmm, yoko, p_att, trigger=None, wait=120, v_scale=None, station=None):
         ''' Parameters 
         '''
+
+        # TODO: should arrange this like the segmented capture like in an xarray, with metadata
+        # for each segment of data
 
         trigger = self.trace_v_trigger if trigger is None else trigger 
         v_scale = self.trace_v_scale if v_scale is None else v_scale 
@@ -573,6 +589,10 @@ class snspd:
             # Revert to runstop 
             MS.write('ACQUIRE:STOPAFTER RUNSTOP')
             MS.write('ACQUIRE:STATE ON')
+
+    def trace_vs_current(self, device, currents=None):
+        currents = device['currents'] if currents is None else currents
+        pass
 
     def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, pmeter90, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
@@ -943,7 +963,248 @@ class snspd:
     
     def make_title(self, title, ID, extra=None):
         timestamp = load_by_id(ID).run_timestamp()
-        s = f'{title}\nID {ID} {timestamp}'
+        device_name = load_by_id(ID).metadata['device']
+        s = f'{title} {device_name}\nID {ID} {timestamp}'
         if extra is not None:
             s += f'\n{extra}'
         return s
+
+    # def plot_critical_current(self, ID, ratio=False, extra=None): 
+    #     data = load_by_id(ID).get_parameter_data()
+    #     current = data['dmm_volt']['yoko_current']
+    #     voltage = data['dmm_volt']['dmm_volt']
+    #     temp = data['MC_temp']['MC_temp']
+
+    #     s_extra = f'Avg. Tmxc: {np.average(temp)*1e3:.2f}mK'
+    #     if extra is not None:
+    #         s_extra += f'\n{extra}'
+
+    #     plt.plot(current, voltage)
+    #     title = self.make_title(title=f'Voltage vs Current', ID=ID, extra=s_extra)
+    #     plt.title(title)
+    #     plt.xlabel('Current (A)')
+    #     plt.ylabel('Voltage (V)')
+
+    #     return 
+    
+    # TODO: once there is a way to save traces without using multiple IDs change the way data is read in here 
+    def generate_dataframe(self, IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage):
+        # TODO: the way this needs IDs in the right order is not very useful!! 
+        data_dict = {}
+        for ID in IDrange: 
+            data = load_by_id(ID).get_parameter_data()
+            trace = data['trace']['trace']
+            current = data['yoko_current']['yoko_current'][0]
+            trigger = data['trigger']['trigger'][0]
+            peaks, properties = find_peaks(trace, height=float(trigger), distance=len(trace))
+            key = f'{current*1e6:.2f}'
+
+            peak_voltage = 0 if len(peaks)<1 else trace[peaks][0]
+
+            # Set vertical scale based on minimum peak voltage or actual peak voltage
+            v_scale = min_peak_voltage/2 if peak_voltage < min_peak_voltage else peak_voltage/2
+            test_peak_voltage = min_peak_voltage if peak_voltage < min_peak_voltage else peak_voltage
+
+            threshold1 = mult1*peak_voltage
+
+            threshold2 = mult2*peak_voltage
+
+            if threshold1 < min_threshold1: 
+                threshold1 = min_threshold1
+            
+            if threshold2 < min_threshold2: 
+                threshold2 = min_threshold2 
+            
+            try: 
+                v_scale_measured = data['v_scale']['v_scale'][0]
+            except KeyError: 
+                v_scale_measured = None
+            try: 
+                data_dict[key]
+                print(f'duplicate current {key} ID {ID}')
+            except: 
+                data_dict[key] = {'current': current, 
+                                'trigger': trigger,
+                                'v_scale_measured': v_scale_measured,
+                                'peak_voltage': peak_voltage,
+                                'test_peak_voltage': test_peak_voltage,
+                                'threshold1': threshold1,
+                                'threshold2': threshold2, # does it matter if these are not a multiple of the minimum v_scale_measured?
+                                'v_scale': v_scale,
+                                'ID': int(ID),
+                                }
+        return pd.DataFrame(data=data_dict)
+
+
+    def args(self,function):
+        import inspect
+        print(inspect.signature(function))
+    
+    def pulse_test_calibration(self, IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage, device, osc, awg, cps, n_captures=10, interval=1, trigger=0, station=None):
+        # TODO: Should integrate the pulse test with the data generation. 
+        
+        '''
+        interval is specified in seconds. FOr MSO5 must be minimum 1s
+        '''
+
+        # Generate data 
+        data = self.generate_dataframe(IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage)
+
+        if interval <1: 
+            raise Exception('interval must be greater than or equal to 1s')
+        
+        print('Set standard oscilloscope parameters for counts')
+        self.MSO5_set_standard_counts(self.device_line_2, osc)
+        time.sleep(2)
+        
+        # Update experiment snapshot 
+        self.update_station(station)
+        
+        meas = Measurement()
+        meas.register_custom_parameter("current", label="A")
+        meas.register_custom_parameter("threshold1", label="V")
+        meas.register_custom_parameter("threshold2", label="V")
+        meas.register_custom_parameter("total_counts1", label="counts")
+        meas.register_custom_parameter("total_counts2", label="counts")
+        meas.register_custom_parameter("counts1")
+        meas.register_custom_parameter("counts2")
+        meas.register_custom_parameter("trace_time", label="s")
+        meas.register_custom_parameter("meas_time", label="s")
+        meas.register_custom_parameter("interval", label="s")
+        meas.register_custom_parameter("CR1", label="cps", setpoints=('current',))
+        meas.register_custom_parameter("CR2", label="cps", setpoints=('current',))
+        meas.register_custom_parameter("n_captures")
+        meas.register_custom_parameter('v_scale_set', label='V') # <- added for testing purposes 
+        meas.register_custom_parameter('v_scale', label='V')
+        meas.register_custom_parameter('frequency', label='Hz')
+        meas.register_custom_parameter('amplitude', label='Vpp')
+        meas.register_custom_parameter('trigger', label='V')
+        
+        
+        with meas.run() as datasaver:
+            print(datasaver.run_id)
+            
+            # save device name 
+            datasaver.dataset.add_metadata("device", device['name'])
+            
+            # Extract the amount of time in one trace 
+            h_time = osc.horizontal_scale()*osc.horizontal_divisions()
+            
+            time.sleep(2)
+        
+            for key in data.keys(): 
+                current = data[key]['current']
+                threshold1 = data[key]['threshold1']
+                threshold2 = data[key]['threshold2']
+                v_scale = data[key]['v_scale']
+                test_peak_voltage = data[key]['test_peak_voltage']
+                
+
+                # minimum rise, fall and width parameters 
+                rise = 8.4e-9
+                fall = 8.4e-9
+                width = 16e-9
+
+                # Set AWG parameters 
+                awg.write('SOURCE1:VOLT:UNIT Vpp')
+                awg.write(f'SOURCE1:VOLT:OFFSET {test_peak_voltage/2}')
+                awg.write(f'FUNC PULS')
+                awg.write(f'FUNC:PULS:TRAN:LEAD {rise}')
+                awg.write(f'FUNC:PULS:TRAN:TRA {fall}')
+                awg.write(f'FUNC:PULS:WIDT {width}')
+                awg.write(f'FREQ {cps}')
+                awg.write(f'VOLT {test_peak_voltage}')
+                awg.write('OUTP ON')
+
+                #TODO: consistent naming of the oscilloscope!!!!
+                
+                # Set thresholds and vertical scale 
+                osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
+                osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+                osc.channels[0].vertical_scale(v_scale)
+                osc.trigger_channels[0].ch1_trigger_level(trigger) 
+        
+                time.sleep(5)
+        
+                if osc.channels[0].clipping(): 
+                    raise Exception('Error: Clipping') 
+        
+                time.sleep(5)
+        
+                osc.write("SEARCH:SEARCH1:STATE 0")
+                osc.write("SEARCH:SEARCH1:STATE 1")
+                osc.write("SEARCH:SEARCH2:STATE 0")
+                osc.write("SEARCH:SEARCH2:STATE 1")
+        
+                start = time.perf_counter()
+                print(f'This acquisition will take {n_captures*interval}s')
+                print(datetime.datetime.now().hour,  datetime.datetime.now().minute)
+        
+                counts1= []
+                counts2= []
+        
+                
+                for i in range(n_captures):
+                    time.sleep(interval)
+        
+                    # Extract counts 
+                    count1 = int(osc.ask("SEARCH:SEARCH1:TOTal?"))
+                    count2 = int(osc.ask("SEARCH:SEARCH2:TOTal?"))
+        
+                    counts1.append(count1)
+                    counts2.append(count2)
+        
+                    
+                # calculate total counts 
+                total_counts1 = sum(counts1)
+                total_counts2 = sum(counts2)
+                
+                # total time in measurement 
+                meas_time = n_captures*h_time
+                
+                # dark count rate calculation
+                CR1 = total_counts1/meas_time
+                CR2 = total_counts2/meas_time
+                
+                # Save data 
+                datasaver.add_result(('current', current),
+                                    ("threshold1",  float(osc.ask(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("threshold2",  float(osc.ask(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold?'))), 
+                                    ("total_counts1", total_counts1), 
+                                    ("total_counts2", total_counts2), 
+                                    ("counts1", counts1), 
+                                    ("counts2", counts2), 
+                                    ("meas_time", meas_time), 
+                                    ("interval", interval), 
+                                    ("n_captures", n_captures),
+                                    ("CR1", CR1), 
+                                    ("CR2", CR2),
+                                    ('trigger', osc.trigger_channels[0].ch1_trigger_level()),
+                                    ('v_scale_set', v_scale),
+                                    ("v_scale", float(osc.channels[0].vertical_scale())),
+                                    ("frequency", float(awg.query('FREQ?'))),
+                                    ("amplitude", float(awg.query('VOLT?'))))
+
+# def plot_dataset(
+
+# https://microsoft.github.io/Qcodes/_modules/qcodes/dataset/plotting.html
+
+# alldata: NamedData = _get_data_from_ds(dataset)
+
+# # What has happened to the data when it gets to _set_data_axes_labels 
+
+# _set_data_axes_labels(ax, data) <- modifies label associated with axis I think? 
+
+# _make_label_for_data_axis(data, 0) <- whien this is passed, it must have already determined which parts of the dataset are the setpoints/bits you plot
+
+
+
+# What is this Sequence[DSPPlotData] shit??? 
+# def _make_label_for_data_axis(data: Sequence[DSPlotData], axis_index: int) -> str:
+#     label = _get_label_of_data(data[axis_index])
+#     unit = data[axis_index]["unit"]
+#     return _make_axis_label(label, unit)
+
+# def _get_label_of_data(data_dict: DSPlotData) -> str:
+#     return data_dict["label"] if data_dict["label"] != "" else data_dict["name"]
+
