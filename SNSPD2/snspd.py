@@ -393,9 +393,18 @@ class snspd():
 
         # Unpack parameters for device 
         device_name = device['name']
+        threshold1 = device['count_calibration']['threshold1']
+        threshold2 = device['count_calibration']['threshold2']
+        v_scale = device['count_calibration']['v_scale']
         
         if currents is None:
             currents = device['currents']
+
+        # Check that lengths match 
+        for param in ['threshold1', 'threshold2', 'v_scale']:
+            if len(device['count_calibration'][param]) is not len(currents):
+                raise Exception(f'{param} is not the same length as list of currents')
+
 
         print('Set standard oscilloscope parameters for counts')
         self.MSO5_set_standard_counts(device, osc)
@@ -436,21 +445,18 @@ class snspd():
             
             time.sleep(2)
 
-            for current in currents:
+            for idx in tqdm.tqdm(range(currents)):
                 
                 # Set current 
-                yoko.current(current)
+                yoko.current(currents[idx])
                 time.sleep(2)
 
-                # Setting thresholds 
-                threshold1, threshold2, v_scale = self.set_thresholds(yoko, device, read_current=True)
-
                 # Set thresholds on oscilloscope   
-                osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1}')
-                osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2}')
+                osc.write(f'SEARCH:SEARCH1:TRIGger:A:EDGE:THReshold {threshold1[idx]}')
+                osc.write(f'SEARCH:SEARCH2:TRIGger:A:EDGE:THReshold {threshold2[idx]}')
 
                 # Set corresponding vertical scaling 
-                osc.channels[0].vertical_scale(v_scale)
+                osc.channels[0].vertical_scale(v_scale[idx])
 
                 print(osc.channels[0].vertical_scale())
 
@@ -565,14 +571,16 @@ class snspd():
         h_position_perc = float(MS.ask('HORizontal:POSition?')) # percentage of trace 
         h_centre = h_samples*h_position_perc/100
         time_axis = (np.arange(0, h_samples, 1) - h_centre)/h_samplerate
-
+        trigger = MS.trigger_channels[0].ch1_trigger_level()
+        v_scale = float(MS.channels[0].vertical_scale())
+                                   
         time.sleep(5)
         
         # Revert to runstop 
         MS.write('ACQUIRE:STOPAFTER RUNSTOP')
         MS.write('ACQUIRE:STATE ON')
 
-        return waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis
+        return waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale
 
     def single_trace_capture(self, device, MS, dmm, yoko, p_att, trigger, v_scale, wait=120, station=None):
         ''' Parameters 
@@ -648,8 +656,10 @@ class snspd():
             if len(trigger) is not len(currents):
                 raise Exception('We don\'t have one trigger value per current')
             trigger_list = trigger
+            print('list is trigger')
         else: 
             trigger_list = np.ones_like(currents)*trigger
+            print('single trigger value')
 
         if type(v_scale) is list: 
             if len(v_scale) is not len(currents):
@@ -657,6 +667,7 @@ class snspd():
             v_scale_list = v_scale
         else: 
             v_scale_list = np.ones_like(currents)*v_scale
+            print('single vscale value')
             
         # Update experiment snapshot 
         self.update_station(station)
@@ -678,16 +689,18 @@ class snspd():
         if unlatch:
             self.unlatch(yoko)
         
+        # Ramp to start current 
+        self.ramp_yoko_current(yoko, target=currents[0], step=0.5e-6)
+        yoko.current(currents[0])
+        
         with meas.run() as datasaver:
             print(datasaver.run_id)
 
-            for idx in tqdm(range(len(currents))): 
+            for idx in tqdm.tqdm(range(len(currents))): 
                 yoko.current(currents[idx])
                 # Adjust trigger for trace capture
-                MS.trigger_channels[0].ch1_trigger_level(trigger_list[idx])
-                MS.channels[0].vertical_scale(v_scale_list[idx])
 
-                waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis = self.capture_trace(MS, trigger, wait, v_scale)
+                waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale = self.capture_trace(MS, trigger=trigger_list[idx], wait=wait, v_scale=v_scale_list[idx])
 
                 datasaver.add_result(("trace", [waveform]),
                             ("time_axis", [time_axis]),
@@ -699,8 +712,8 @@ class snspd():
                             (dmm.volt, dmm.volt()),
                             ('v_attenuator', 3),
                             # ('v_attenuator', float(p_att.ask('VOLT?'))),
-                            ('trigger',  MS.trigger_channels[0].ch1_trigger_level()),
-                            ("v_scale", float(MS.channels[0].vertical_scale())))
+                            ('trigger',  trigger),
+                            ("v_scale", v_scale))
                             # ("laser_status", str(self.laser.enable())))
                             # TODO: should uncomment that and make it work ^
         
