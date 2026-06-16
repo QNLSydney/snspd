@@ -20,10 +20,11 @@ from scipy.signal import find_peaks
 import numpy as np
 import pandas as pd
 from plotting import snspd_plotting
+import tqdm
 
 # TODO: fix all the write string errors
 
-class snspd(snspd_plotting):
+class snspd():
     def __init__(self, config=None, station_config=None):
 
         if config is not None: 
@@ -302,7 +303,7 @@ class snspd(snspd_plotting):
 
         # Ramp to zero and wait 
         if unlatch:
-            self.unlatch()
+            self.unlatch(yoko)
 
         # Set first current 
         self.ramp_yoko_current(yoko, target=currents[0], step=0.5e-6) 
@@ -333,7 +334,7 @@ class snspd(snspd_plotting):
         
         # Ramp to zero and wait 
         if unlatch:
-            self.unlatch()
+            self.unlatch(yoko)
 
     def photon_number(self, power90, total_attenuation, v_attenuator, wavelength):
 
@@ -627,7 +628,7 @@ class snspd(snspd_plotting):
                         # ("laser_status", str(self.laser.enable())))
                         # TODO: should uncomment that and make it work ^
 
-    def trace_vs_current(self, device, MS, dmm, yoko, p_att, trigger, v_scale, wait=120, currents=None, station=None):
+    def trace_vs_current(self, device, MS, dmm, yoko, trigger, v_scale, wait=120, currents=None, unlatch=True, station=None):
         ''' Parameters 
         '''
         # TODO: should arrange this like the segmented capture like in an xarray, with metadata
@@ -640,10 +641,23 @@ class snspd(snspd_plotting):
         print('Oscilloscope set for trace capture')
         time.sleep(2)
 
-        # Adjust trigger for trace capture
-        MS.trigger_channels[0].ch1_trigger_level(trigger)
-        MS.channels[0].vertical_scale(v_scale)
+        # TODO: clean up these if statements 
 
+        # Build lists for trace capture 
+        if type(trigger) is list: 
+            if len(trigger) is not len(currents):
+                raise Exception('We don\'t have one trigger value per current')
+            trigger_list = trigger
+        else: 
+            trigger_list = np.ones_like(currents)*trigger
+
+        if type(v_scale) is list: 
+            if len(v_scale) is not len(currents):
+                raise Exception('We don\'t have one v_scale value per current')
+            v_scale_list = v_scale
+        else: 
+            v_scale_list = np.ones_like(currents)*v_scale
+            
         # Update experiment snapshot 
         self.update_station(station)
         
@@ -660,20 +674,23 @@ class snspd(snspd_plotting):
         meas.register_custom_parameter('trigger', label='V')
         meas.register_custom_parameter('v_scale', label='V')
 
-        # Ramp to zero 
-        self.ramp_yoko_current(yoko, target=0, step=0.5e-6)
-        yoko.current(0)
+        # Ramp to zero and wait 
+        if unlatch:
+            self.unlatch(yoko)
         
         with meas.run() as datasaver:
             print(datasaver.run_id)
 
-            for current in currents: 
-                yoko.current(current)
+            for idx in tqdm(range(len(currents))): 
+                yoko.current(currents[idx])
+                # Adjust trigger for trace capture
+                MS.trigger_channels[0].ch1_trigger_level(trigger_list[idx])
+                MS.channels[0].vertical_scale(v_scale_list[idx])
 
                 waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis = self.capture_trace(MS, trigger, wait, v_scale)
 
-                datasaver.add_result(("trace", waveform),
-                            ("time_axis", time_axis),
+                datasaver.add_result(("trace", [waveform]),
+                            ("time_axis", [time_axis]),
                             (yoko.current, yoko.current()), 
                             ("h_samplerate", h_samplerate), 
                             ("h_samples", h_samples),
@@ -686,7 +703,10 @@ class snspd(snspd_plotting):
                             ("v_scale", float(MS.channels[0].vertical_scale())))
                             # ("laser_status", str(self.laser.enable())))
                             # TODO: should uncomment that and make it work ^
-            
+        
+        # Ramp to zero and wait 
+        if unlatch:
+            self.unlatch(yoko)   
 
     def MSO5_counts_vs_attenuation(self, MS, dmm, yoko, p_att, pmeter90, device, v_att_range, n_captures=10, interval=1, current=None, thresholds=None,  station=None):
         '''
@@ -1063,23 +1083,23 @@ class snspd(snspd_plotting):
             s += f'\n{extra}'
         return s
 
-    # def plot_critical_current(self, ID, ratio=False, extra=None): 
-    #     data = load_by_id(ID).get_parameter_data()
-    #     current = data['dmm_volt']['yoko_current']
-    #     voltage = data['dmm_volt']['dmm_volt']
-    #     temp = data['MC_temp']['MC_temp']
+    def plot_critical_current(self, ID, ratio=False, extra=None): 
+        data = load_by_id(ID).get_parameter_data()
+        current = data['dmm_volt']['yoko_current']
+        voltage = data['dmm_volt']['dmm_volt']
+        temp = data['MC_temp']['MC_temp']
 
-    #     s_extra = f'Avg. Tmxc: {np.average(temp)*1e3:.2f}mK'
-    #     if extra is not None:
-    #         s_extra += f'\n{extra}'
+        s_extra = f'Avg. Tmxc: {np.average(temp)*1e3:.2f}mK'
+        if extra is not None:
+            s_extra += f'\n{extra}'
 
-    #     plt.plot(current, voltage)
-    #     title = self.make_title(title=f'Voltage vs Current', ID=ID, extra=s_extra)
-    #     plt.title(title)
-    #     plt.xlabel('Current (A)')
-    #     plt.ylabel('Voltage (V)')
+        plt.plot(current, voltage, '.')
+        title = self.make_title(title=f'Voltage vs Current', ID=ID, extra=s_extra)
+        plt.title(title)
+        plt.xlabel('Current (A)')
+        plt.ylabel('Voltage (V)')
 
-    #     return 
+        return 
     
     # TODO: once there is a way to save traces without using multiple IDs change the way data is read in here 
     def generate_dataframe(self, IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage):
@@ -1294,6 +1314,43 @@ class snspd(snspd_plotting):
         plt.title(title)
         plt.xlabel('Current (A)')
         plt.ylabel('Voltage (V)')
+    
+
+    def plot_count_calibration(self, IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage):
+            from ipywidgets import interact, fixed, IntSlider
+            from scipy.signal import find_peaks
+            data = self.generate_dataframe(IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage)
+            IDs = np.array(data.loc['ID'])
+        
+            def plot_traces(idx, data):
+                ID = np.array(data.loc['ID'])[idx]
+                threshold1 = np.array(data.loc['threshold1'])[idx]
+                threshold2 = np.array(data.loc['threshold2'])[idx]
+                peak_voltage = np.array(data.loc['peak_voltage'])[idx]
+                v_scale = np.array(data.loc['v_scale'])[idx]
+                
+                data = load_by_id(ID).get_parameter_data()
+                trace = data['trace']['trace']
+                taxis = data['trace']['time_axis']
+                current = data['yoko_current']['yoko_current']
+                trigger = data['trigger']['trigger'][0]
+                plt.plot(taxis, trace)
+                peaks, properties = find_peaks(trace, height=float(trigger), distance=len(trace))
+                plt.plot(taxis, np.ones_like(taxis)*float(trigger), label=f'Trigger in sweep {trigger*1e3}mV')
+                plt.plot(taxis, np.ones_like(taxis)*threshold1, label=f'Threshold1 {mult1*100}% {threshold1*1e3}mV')
+                plt.plot(taxis, np.ones_like(taxis)*threshold2, label=f'Threshold2 {mult2*100}% {threshold2*1e3} mV')
+                plt.plot(taxis[peaks],trace[peaks], 'ro', label=f'Peak {trace[peaks]*1e3}mV')
+                plt.title(f'ID: {ID} Current: {current[0]*1e6}uA\nVertical Scale: {v_scale}')
+                plt.legend()
+                plt.ylabel('Voltage (V)')
+                plt.xlabel('Time (s)')
+                    
+            interact(plot_traces, idx=IntSlider(min=0, max=len(IDs), step=1, value=0,
+                                            continuous_update=False), data=fixed(data));
+
+
+
+
 # def plot_dataset(
 
 # https://microsoft.github.io/Qcodes/_modules/qcodes/dataset/plotting.html
