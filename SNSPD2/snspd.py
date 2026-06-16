@@ -75,6 +75,14 @@ class snspd():
 
     # TODO: add a function that echoes the laser state to some GUI 
 
+    def optics_set_standard(self, laser, pmeter90, p_att, wavelength, laser_power, v_attenuator):
+        self.laser_set_standard(laser, wavelength=wavelength, power=laser_power)
+        self.laser_get_standard(laser)
+        self.pmeter_set_standard(pmeter=pmeter90, wavelength=wavelength)
+        p_att.write(f'VOLT{v_attenuator}')
+        # TODO: set code to turn attenuator power ON
+
+
     def quick_check(self, pmeter10, pmeter90, attenuator=None, station=None):
         '''Input: measured transmission of beam splitter and power meter instruments
         '''
@@ -216,7 +224,6 @@ class snspd():
         MS.horizontal_scale(h_scale)
         MS.horizontal_position(device_count_settings['counts_h_pos'])
 
-        
         MS.channels[0].vertical_scale(device_count_settings['counts_v_scale'])
         MS.channels[0].termination(50)
         MS.channels[0].bandwidth(1e9)
@@ -373,7 +380,7 @@ class snspd():
         return np.average(load_by_id(ID).get_parameter_data()[key][key])
     
         
-    def MSO5_counts_vs_current(self, device, n_captures=10, interval=1, osc=None, dmm=None, yoko=None, pmeter90=None, currents=None, station=None):
+    def MSO5_counts_vs_current(self, device, n_captures=10, interval=1, osc=None, dmm=None, yoko=None, pmeter90=None, currents=None, unlatch=True, idx_list=None, station=None):
         '''
         interval is specified in seconds. FOr MSO5 must be minimum 1s
         '''
@@ -388,7 +395,7 @@ class snspd():
 
         yoko = self.yoko if yoko is None else yoko
         dmm = self.dmm if dmm is None else dmm 
-        osc = self.osc if osc is None else osc 
+        osc = self.osc if osc is None else osc
         pmeter90 = self.pms120 if pmeter90 is None else pmeter90 
 
         # Unpack parameters for device 
@@ -396,6 +403,7 @@ class snspd():
         threshold1 = device['count_calibration']['threshold1']
         threshold2 = device['count_calibration']['threshold2']
         v_scale = device['count_calibration']['v_scale']
+        trigger = device['count_calibration']['trigger']
         
         if currents is None:
             currents = device['currents']
@@ -412,6 +420,10 @@ class snspd():
 
         # Update experiment snapshot 
         self.update_station(station)
+
+        # Ramp to zero and wait 
+        if unlatch:
+            self.unlatch(yoko)
 
         meas = Measurement()
         meas.register_parameter(dmm.volt)
@@ -431,8 +443,10 @@ class snspd():
         meas.register_custom_parameter("CR2", label="cps", setpoints=(yoko.current,))
         meas.register_custom_parameter("n_captures")
         meas.register_custom_parameter("power90", label="W")
+        meas.register_custom_parameter("trigger", label="V")
         meas.register_custom_parameter('v_scale', label='V')
 
+        # TODO: should I save the temperature? 
         
         with meas.run() as datasaver:
             print(datasaver.run_id)
@@ -445,7 +459,9 @@ class snspd():
             
             time.sleep(2)
 
-            for idx in tqdm.tqdm(range(currents)):
+            idx_list = range(len(currents)) if idx_list is None else idx_list
+
+            for idx in tqdm.tqdm(idx_list):
                 
                 # Set current 
                 yoko.current(currents[idx])
@@ -459,6 +475,9 @@ class snspd():
                 osc.channels[0].vertical_scale(v_scale[idx])
 
                 print(osc.channels[0].vertical_scale())
+
+                # Set trigger
+                osc.trigger_channels[0].ch1_trigger_level(trigger)
 
                 time.sleep(5)
 
@@ -520,8 +539,11 @@ class snspd():
                                     ('v_attenuator', float(self.p_att.ask('VOLT?'))),
                                     ('wavelength', spc.c/self.laser.frequency_coarse()), 
                                     ("power90", pmeter90.power()),
+                                    ('trigger', osc.trigger_channels[0].ch1_trigger_level()),
                                     ("v_scale", float(osc.channels[0].vertical_scale())))
-
+        # Unlatch at the end
+        self.unlatch(yoko)
+    
     def capture_trace(self, MS, trigger, v_scale, wait=120, station=None):
         ''' Parameters 
         '''
@@ -573,14 +595,16 @@ class snspd():
         time_axis = (np.arange(0, h_samples, 1) - h_centre)/h_samplerate
         trigger = MS.trigger_channels[0].ch1_trigger_level()
         v_scale = float(MS.channels[0].vertical_scale())
-                                   
+        peaks, _ = find_peaks(waveform, height=float(trigger), distance=len(waveform))
+        v_peak = waveform[peaks]       
+               
         time.sleep(5)
         
         # Revert to runstop 
         MS.write('ACQUIRE:STOPAFTER RUNSTOP')
         MS.write('ACQUIRE:STATE ON')
 
-        return waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale
+        return waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale, v_peak
 
     def single_trace_capture(self, device, MS, dmm, yoko, p_att, trigger, v_scale, wait=120, station=None):
         ''' Parameters 
@@ -684,6 +708,7 @@ class snspd():
         meas.register_custom_parameter("v_attenuator", label="V")
         meas.register_custom_parameter('trigger', label='V')
         meas.register_custom_parameter('v_scale', label='V')
+        meas.register_custom_parameter('v_peak', label='V')
 
         # Ramp to zero and wait 
         if unlatch:
@@ -692,7 +717,7 @@ class snspd():
         # Ramp to start current 
         self.ramp_yoko_current(yoko, target=currents[0], step=0.5e-6)
         yoko.current(currents[0])
-        
+
         with meas.run() as datasaver:
             print(datasaver.run_id)
 
@@ -700,7 +725,7 @@ class snspd():
                 yoko.current(currents[idx])
                 # Adjust trigger for trace capture
 
-                waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale = self.capture_trace(MS, trigger=trigger_list[idx], wait=wait, v_scale=v_scale_list[idx])
+                waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale, v_peak = self.capture_trace(MS, trigger=trigger_list[idx], wait=wait, v_scale=v_scale_list[idx])
 
                 datasaver.add_result(("trace", [waveform]),
                             ("time_axis", [time_axis]),
@@ -713,7 +738,8 @@ class snspd():
                             ('v_attenuator', 3),
                             # ('v_attenuator', float(p_att.ask('VOLT?'))),
                             ('trigger',  trigger),
-                            ("v_scale", v_scale))
+                            ("v_scale", v_scale),
+                            ('v_peak', v_peak))
                             # ("laser_status", str(self.laser.enable())))
                             # TODO: should uncomment that and make it work ^
         
@@ -1181,7 +1207,7 @@ class snspd():
             raise Exception('interval must be greater than or equal to 1s')
         
         print('Set standard oscilloscope parameters for counts')
-        self.MSO5_set_standard_counts(self.device_line_2, osc)
+        self.MSO5_set_standard_counts(device, osc)
         time.sleep(2)
         
         # Update experiment snapshot 
@@ -1335,7 +1361,7 @@ class snspd():
             data = self.generate_dataframe(IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage)
             IDs = np.array(data.loc['ID'])
         
-            def plot_traces(idx, data):
+            def plot_traces(idx, data, ):
                 ID = np.array(data.loc['ID'])[idx]
                 threshold1 = np.array(data.loc['threshold1'])[idx]
                 threshold2 = np.array(data.loc['threshold2'])[idx]
@@ -1348,7 +1374,7 @@ class snspd():
                 current = data['yoko_current']['yoko_current']
                 trigger = data['trigger']['trigger'][0]
                 plt.plot(taxis, trace)
-                peaks, properties = find_peaks(trace, height=float(trigger), distance=len(trace))
+                peaks, _ = find_peaks(trace, height=float(trigger), distance=len(trace))
                 plt.plot(taxis, np.ones_like(taxis)*float(trigger), label=f'Trigger in sweep {trigger*1e3}mV')
                 plt.plot(taxis, np.ones_like(taxis)*threshold1, label=f'Threshold1 {mult1*100}% {threshold1*1e3}mV')
                 plt.plot(taxis, np.ones_like(taxis)*threshold2, label=f'Threshold2 {mult2*100}% {threshold2*1e3} mV')
@@ -1359,8 +1385,23 @@ class snspd():
                 plt.xlabel('Time (s)')
                     
             interact(plot_traces, idx=IntSlider(min=0, max=len(IDs), step=1, value=0,
-                                            continuous_update=False), data=fixed(data));
+                                            continuous_update=False), data=fixed(data))
 
+    def set_axes_labels(self, ax, flag: str):
+        if str is 'trace':
+            ax.set_xlabel('Time (s)')
+            ax.set_ylabel('Voltage (V)')
+
+    def plot_trace_interactive(self, ID):
+        data = load_by_id(ID).get_parameter_data()
+        ax, fig = plt.subplots()
+        ax.plot()
+        data = load_by_id(ID).get_parameter_data()
+        trace = data['trace']['trace']
+        taxis = data['trace']['time_axis']
+        current = data['yoko_current']['yoko_current']
+        trigger = data['trigger']['trigger'][0]
+        plt.plot(taxis, trace)
 
 
 
