@@ -286,7 +286,7 @@ class snspd():
         time.sleep(t)
 
     
-    def critical_current(self, device, dmm=None, yoko=None, tc=None, unlatch=True, station=None):
+    def critical_current(self, device, dmm=None, yoko=None, tc=None, currents=None, unlatch=True, station=None):
         '''
         interval is specified in seconds
         unlatch: bool, if true the function will include unlatch code
@@ -295,8 +295,8 @@ class snspd():
         yoko = self.yoko if yoko is None else yoko
         dmm = self.dmm if dmm is None else dmm 
         tc = self.tc if tc is None else tc 
+        currents = device['currents'] if currents is None else currents
 
-        currents = device['currents']
         device_name = device['name']
 
         # Update station
@@ -324,7 +324,7 @@ class snspd():
             datasaver.dataset.add_metadata("device", device_name)
 
 
-            for cur in currents: # <- sweep wavelength of laser 
+            for cur in tqdm.tqdm(currents): # <- sweep wavelength of laser 
 
                 # set current 
                 yoko.current(cur)
@@ -550,19 +550,6 @@ class snspd():
         # TODO: should arrange this like the segmented capture like in an xarray, with metadata
         # for each segment of data
 
-        # Set parameters for trace capture using set standard functon 
-        self.MSO5_set_standard_trace(MS)
-        print('Oscilloscope set for trace capture')
-        time.sleep(2)
-
-        # Adjust trigger for trace capture
-        MS.trigger_channels[0].ch1_trigger_level(trigger)
-        MS.channels[0].vertical_scale(v_scale)
-
-        # Update experiment snapshot 
-        self.update_station(station)
-    
-
         if not int(MS.ask('ACQUIRE:STATE?')): 
             raise Exception('Acquisition state is not 1')
     
@@ -570,6 +557,20 @@ class snspd():
         MS.write('ACQUIRE:STOPAFTER SEQUENCE')
         MS.write('ACQUIRE:STATE ON')
         # MS.write('*OPC?')
+
+        # Set parameters for trace capture using set standard functon 
+        self.MSO5_set_standard_trace(MS)
+        print('Oscilloscope set for trace capture')
+        time.sleep(2)
+
+        # Adjust trigger for trace capture
+        MS.trigger_channels[0].ch1_trigger_level(trigger)
+        print(v_scale)
+        MS.channels[0].vertical_scale(v_scale)
+
+        # Update experiment snapshot 
+        self.update_station(station)
+
 
         start = time.perf_counter()
         while int(MS.ask('ACQUIRE:STATE?')): # state should return 0 if acquisition is stopped and a trace is captured
@@ -637,14 +638,15 @@ class snspd():
         meas.register_custom_parameter("v_attenuator", label="V")
         meas.register_custom_parameter('trigger', label='V')
         meas.register_custom_parameter('v_scale', label='V')
+        meas.register_custom_parameter('v_peak', label='V')
 
         
         with meas.run() as datasaver:
             print(datasaver.run_id)
 
             datasaver.dataset.add_metadata("device", device['name'])
-
-            waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis = self.capture_trace(MS, trigger, wait, v_scale)
+            print(v_scale)
+            waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale, v_peak = self.capture_trace(MS, trigger, v_scale, wait)
 
             datasaver.add_result(("trace", waveform),
                         ("time_axis", time_axis),
@@ -656,7 +658,8 @@ class snspd():
                         (dmm.volt, dmm.volt()),
                         ('v_attenuator', float(p_att.ask('VOLT?'))),
                         ('trigger',  MS.trigger_channels[0].ch1_trigger_level()),
-                        ("v_scale", float(MS.channels[0].vertical_scale())))
+                        ("v_scale", float(MS.channels[0].vertical_scale())),
+                        ('v_peak', v_peak))
                         # ("laser_status", str(self.laser.enable())))
                         # TODO: should uncomment that and make it work ^
 
@@ -667,11 +670,6 @@ class snspd():
         # for each segment of data
 
         currents = device['currents'] if currents is None else currents
-
-        # Set parameters for trace capture using set standard functon 
-        self.MSO5_set_standard_trace(MS)
-        print('Oscilloscope set for trace capture')
-        time.sleep(2)
 
         # TODO: clean up these if statements 
 
@@ -724,6 +722,8 @@ class snspd():
             for idx in tqdm.tqdm(range(len(currents))): 
                 yoko.current(currents[idx])
                 # Adjust trigger for trace capture
+
+                datasaver.dataset.add_metadata("device", device['name'])
 
                 waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale, v_peak = self.capture_trace(MS, trigger=trigger_list[idx], wait=wait, v_scale=v_scale_list[idx])
 
@@ -1338,6 +1338,124 @@ class snspd():
                                     ("frequency", float(awg.query('FREQ?'))),
                                     ("amplitude", float(awg.query('VOLT?'))))
     
+    def critical_current_setv(self, device, Rb, dmm=None, yoko=None, voltages=None, station=None):
+        # Note: tc was removed from this function because of an IT issue
+    
+        import tqdm
+
+        if yoko.source_mode() != 'VOLT': 
+            raise Exception('Yoko is not in voltage mode')
+        
+        # Read from station internally unless an instrument is passed 
+        yoko = self.yoko if yoko is None else yoko
+        dmm = self.dmm if dmm is None else dmm 
+        # tc = params.tc if tc is None else tc 
+
+        # Update station
+        self.update_station(station)
+
+        # Establish measurement
+        meas = Measurement()
+        meas.register_parameter(yoko.voltage)
+        meas.register_parameter(dmm.volt, setpoints=(yoko.voltage,))
+        # meas.register_custom_parameter("MC_temp", label="K")
+        meas.register_custom_parameter("Rbias", label="Ohms")
+
+        # Set first current 
+        if yoko.voltage() != voltages[0]: 
+            raise Exception('Ramp to first voltage value')
+       
+
+        with meas.run() as datasaver:
+            print(datasaver.run_id)
+            
+            # save device name 
+            datasaver.dataset.add_metadata("device", device['name'])
+
+
+            for v in tqdm.tqdm(voltages): 
+
+                # set current 
+                yoko.voltage(v)
+                time.sleep(1)
+                print(f'Starting voltage {yoko.voltage()}')
+
+                # Save data 
+                datasaver.add_result((yoko.voltage, yoko.voltage()),
+                                    (dmm.volt, dmm.volt()),
+                                    # ("MC_temp", tc.MC_temp()),
+                                    ("Rbias", Rb))
+                
+                time.sleep(10)
+        
+        # Ramp to zero and wait 
+        print('Unlatch, ramp to zero and wait') 
+        for v in voltages[::-1]: 
+            yoko.voltage(v)
+            time.sleep(1)
+        time.sleep(30)
+        
+    def trace_vs_voltage(self, device, Rbias, voltages, MS, dmm, yoko, p_att, trigger, v_scale, wait=120, station=None):
+        ''' Parameters 
+        '''
+        import tqdm
+        # for each segment of data
+        if yoko.source_mode() != 'VOLT': 
+            raise Exception('Yoko is not in voltage mode')
+            
+        # Set first current 
+        if yoko.voltage() != voltages[0]: 
+            raise Exception('Ramp to first voltage value')
+
+        # Update experiment snapshot 
+        self.update_station(station)
+        
+        meas = Measurement()
+        meas.register_custom_parameter("time_axis", label="time_axis")
+        meas.register_custom_parameter("trace", label="trace", setpoints=("time_axis", ))
+        meas.register_custom_parameter("h_samples", label="samples")
+        meas.register_custom_parameter("h_centre", label="samples")
+        meas.register_custom_parameter("h_samplerate", label="samples/sec")
+        meas.register_custom_parameter("h_position_perc", label="samples")
+        meas.register_parameter(dmm.volt)
+        meas.register_parameter(yoko.voltage) # minimise number of things required in a global namespace 
+        meas.register_custom_parameter("v_attenuator", label="V")
+        meas.register_custom_parameter('trigger', label='V')
+        meas.register_custom_parameter('v_scale', label='V')
+        meas.register_custom_parameter('v_peak', label='V')
+        meas.register_custom_parameter('Rbias', label='Ohms')
+        
+        with meas.run() as datasaver:
+            print(datasaver.run_id)
+
+            for (idx, v) in tqdm.tqdm(enumerate(voltages)): 
+                yoko.voltage(v)
+                
+                datasaver.dataset.add_metadata("device", device['name'])
+                
+                waveform, h_samples, h_samplerate, h_position_perc, h_centre, time_axis, trigger, v_scale, v_peak = self.capture_trace(MS, trigger, v_scale, wait)
+
+                datasaver.add_result(("trace", waveform),
+                            ("time_axis", time_axis),
+                            (yoko.voltage, yoko.voltage()), 
+                            ("h_samplerate", h_samplerate), 
+                            ("h_samples", h_samples),
+                            ("h_position_perc", h_position_perc),
+                            ("h_centre", h_centre),
+                            (dmm.volt, dmm.volt()),
+                            ('v_attenuator', float(p_att.ask('VOLT?'))),
+                            ('trigger',  MS.trigger_channels[0].ch1_trigger_level()),
+                            ("v_scale", float(MS.channels[0].vertical_scale())),
+                            ('v_peak', v_peak),
+                            ('Rbias', Rbias))
+            
+        # Ramp to zero and wait 
+        print('Unlatch, ramp to zero and wait') 
+        for v in voltages[::-1]: 
+            yoko.voltage(v)
+            time.sleep(1)
+        time.sleep(30)
+
     def plot_critical_current(self, ID, ratio=False, extra=None): 
         data = load_by_id(ID).get_parameter_data()
         current = data['dmm_volt']['yoko_current']
@@ -1354,6 +1472,7 @@ class snspd():
         plt.xlabel('Current (A)')
         plt.ylabel('Voltage (V)')
     
+    # TODO: for calibration and trace plots, use enumerate!  for (idx, val) in enumerate():
 
     def plot_count_calibration(self, IDrange, mult1, mult2, min_threshold2, min_threshold1, min_peak_voltage):
             from ipywidgets import interact, fixed, IntSlider
