@@ -1,5 +1,18 @@
 att_blue: # <- make the structure so that each device has a nickname
   name: 'V1550PA'
+  v_attenuator: 
+  attenuation: # in dB 
+
+  # Go through the SNSPD11 results and get out the v_attenuator vs attenuation 
+
+att_screw:
+  name: 'VOA50PM'
+  attenuation: 49.63817279560622 # in dB from ID 103 SNSPD12.dB
+
+att_yscrew: 
+  name: 'MVOA-P'
+  attenuation: 48.68732365872973 # in units dB from ID 116 SNSPD12.dB 
+
 
 # pmeter10: 
 #   name: 
