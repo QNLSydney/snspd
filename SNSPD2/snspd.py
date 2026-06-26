@@ -1114,10 +1114,13 @@ class snspd():
         print(f'Check match:{test} (test) = {val_out}?')
         return int(idx[0][0]), val_out
     
-    def make_title(self, title, ID, extra=None):
+    def make_title(self, title, ID, extra=None, device:bool =True):
         timestamp = load_by_id(ID).run_timestamp()
-        device_name = load_by_id(ID).metadata['device']
-        s = f'{title} {device_name}\nID {ID} {timestamp}'
+        if device:
+            device_name = load_by_id(ID).metadata['device']
+            s = f'{title} {device_name}\nID {ID} {timestamp}'
+        else: 
+            s = f'{title}\nID {ID} {timestamp}'
         if extra is not None:
             s += f'\n{extra}'
         return s
