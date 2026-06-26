@@ -1511,16 +1511,7 @@ class snspd():
             ax.set_xlabel('Time (s)')
             ax.set_ylabel('Voltage (V)')
 
-    def plot_trace_interactive(self, ID):
-        data = load_by_id(ID).get_parameter_data()
-        ax, fig = plt.subplots()
-        ax.plot()
-        data = load_by_id(ID).get_parameter_data()
-        trace = data['trace']['trace']
-        taxis = data['trace']['time_axis']
-        current = data['yoko_current']['yoko_current']
-        trigger = data['trigger']['trigger'][0]
-        plt.plot(taxis, trace)
+
 
 
 
@@ -1538,7 +1529,7 @@ class snspd():
 
 
 
-# What is this Sequence[DSPPlotData] shit??? 
+# What is this Sequence[DSPPlotData] stuff??? 
 # def _make_label_for_data_axis(data: Sequence[DSPlotData], axis_index: int) -> str:
 #     label = _get_label_of_data(data[axis_index])
 #     unit = data[axis_index]["unit"]
