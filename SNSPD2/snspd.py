@@ -1517,6 +1517,8 @@ class snspd():
         data = load_by_id(ID).get_parameter_data()
         print(f'Keys: {data.keys()}')
         print(f'Metadata: {load_by_id(ID).metadata.keys()}')
+        timestamp = load_by_id(ID).run_timestamp()
+        print(f'Time: {timestamp}')
 
 
 
