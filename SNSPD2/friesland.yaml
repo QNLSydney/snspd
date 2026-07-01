@@ -21,8 +21,8 @@ instruments:
       terminator: "\n"
   pm100usb:
     type: Thorlabs_PM100.Thorlabs_PM100USB
-    address: USB0::0x1313::0x8072::1906768::0::INSTR
-    # address: 'USB0::0x1313::0x8078::P0033329::0::INSTR'
+    # address: USB0::0x1313::0x8072::1906768::0::INSTR
+    address: 'USB0::0x1313::0x8078::P0033329::0::INSTR'
     init:
       terminator: "\r\n"
   pms120:
