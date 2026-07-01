@@ -1512,6 +1512,11 @@ class snspd():
         if str is 'trace':
             ax.set_xlabel('Time (s)')
             ax.set_ylabel('Voltage (V)')
+    
+    def print_keys(self, ID): 
+        data = load_by_id(ID).get_parameter_data()
+        print(f'Keys: {data.keys()}')
+        print(f'Metadata: {load_by_id(ID).metadata.keys()}')
 
 
 
