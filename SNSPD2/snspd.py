@@ -19,7 +19,6 @@ from qcodes.station import Station
 from scipy.signal import find_peaks
 import numpy as np
 import pandas as pd
-from plotting import snspd_plotting
 import tqdm
 
 # TODO: fix all the write string errors
